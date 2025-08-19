@@ -28,8 +28,8 @@ The app uses three main data structures:
 
 The app is configured to use SwiftData for persistence:
 - ModelContainer setup in `HearingSupportAppApp.swift` 
-- Schema includes `Item.swift` (appears to be template/unused)
-- The actual Record data currently uses in-memory storage in ContentView state
+- Schema includes `Record`, `TestResult`, and `AppSettings` models
+- All data is stored locally using SwiftData with proper array serialization via Data encoding
 
 ## Development Commands
 
@@ -48,6 +48,22 @@ xcodebuild -project HearingSupportApp.xcodeproj -scheme HearingSupportApp -desti
 xcodebuild test -project HearingSupportApp.xcodeproj -scheme HearingSupportApp -destination 'platform=iOS Simulator,name=iPhone 15'
 ```
 
+## データ保護ポリシー（重要）
+
+**このアプリの最重要方針：**
+- **開発者・運営者は一切のデータを保存しません**
+- **すべてのデータはユーザーのデバイス内のみに保存されます**
+- **外部サーバーへの送信は技術的に不可能です**
+- **iCloudが唯一のバックアップ先となります**
+- **データ共有機能は意図的に実装していません**
+
+### 開発時の注意事項
+- 外部API呼び出し機能を追加してはいけません
+- データエクスポート機能を実装してはいけません
+- SNS連携機能を追加してはいけません
+- アナリティクス系のライブラリを導入してはいけません
+- ユーザーデータを扱う外部サービスとの連携を行ってはいけません
+
 ## Key Features
 
 1. **Hearing Test Records**: Create and edit records with hospital, test type, and detailed results
@@ -56,6 +72,8 @@ xcodebuild test -project HearingSupportApp.xcodeproj -scheme HearingSupportApp -
 4. **Condition Tracking**: Records for different conditions (naked ear, hearing aid, cochlear implant)
 5. **Visualization**: Line graphs showing hearing threshold curves
 6. **Hospital Management**: Dynamic hospital list that grows as users add new facilities
+7. **Settings Management**: Built-in privacy policy and contact information
+8. **Privacy-First Design**: Zero external data transmission, local-only storage
 
 ## Japanese Localization
 

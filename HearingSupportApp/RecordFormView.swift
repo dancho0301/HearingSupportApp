@@ -6,41 +6,39 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct RecordFormView: View {
     @State var date: Date
-    @State var hospitalList: [String]
     @State var selectedHospitalIndex: Int
     @State var newHospital: String
-    @State var testTypes: [String]
     @State var selectedTestIndex: Int
     @State var detail: String
     @State var results: [TestResultInput]
 
+    let settings: AppSettings
     var isEditing: Bool
-    var onSave: (Record) -> Void
+    var onSave: (String, String, Date, String, [TestResult]) -> Void
     var onDelete: (() -> Void)? = nil
     @Environment(\.presentationMode) var presentationMode
  
     init(
         record: Record?,
-        hospitalList: [String],
-        testTypes: [String],
+        settings: AppSettings,
         isEditing: Bool,
-        onSave: @escaping (Record) -> Void,
+        onSave: @escaping (String, String, Date, String, [TestResult]) -> Void,
         onDelete: (() -> Void)? = nil
     ) {
         _date = State(initialValue: record?.date ?? Date())
-        _hospitalList = State(initialValue: hospitalList)
-        if let rec = record, let idx = hospitalList.firstIndex(of: rec.hospital) {
+        self.settings = settings
+        if let rec = record, let idx = settings.hospitalList.firstIndex(of: rec.hospital) {
             _selectedHospitalIndex = State(initialValue: idx)
             _newHospital = State(initialValue: "")
         } else {
-            _selectedHospitalIndex = State(initialValue: hospitalList.count)
+            _selectedHospitalIndex = State(initialValue: settings.hospitalList.count)
             _newHospital = State(initialValue: record?.hospital ?? "")
         }
-        _testTypes = State(initialValue: testTypes)
-        if let rec = record, let tIdx = testTypes.firstIndex(of: rec.title) {
+        if let rec = record, let tIdx = settings.testTypes.firstIndex(of: rec.title) {
             _selectedTestIndex = State(initialValue: tIdx)
         } else {
             _selectedTestIndex = State(initialValue: 0)
@@ -59,20 +57,20 @@ struct RecordFormView: View {
                     .datePickerStyle(.compact)
                     .environment(\.locale, Locale(identifier: "ja_JP"))
                 Picker("病院名", selection: $selectedHospitalIndex) {
-                    ForEach(0..<(hospitalList.count + 1), id: \.self) { idx in
-                        if idx < hospitalList.count {
-                            Text(hospitalList[idx])
+                    ForEach(0..<(settings.hospitalList.count + 1), id: \.self) { idx in
+                        if idx < settings.hospitalList.count {
+                            Text(settings.hospitalList[idx])
                         } else {
                             Text("新規入力")
                         }
                     }
                 }
-                if selectedHospitalIndex == hospitalList.count {
+                if selectedHospitalIndex == settings.hospitalList.count {
                     TextField("新しい病院名を入力", text: $newHospital)
                 }
                 Picker("検査名", selection: $selectedTestIndex) {
-                    ForEach(0..<testTypes.count, id: \.self) {
-                        Text(testTypes[$0])
+                    ForEach(0..<settings.testTypes.count, id: \.self) {
+                        Text(settings.testTypes[$0])
                     }
                 }
             }
@@ -98,22 +96,24 @@ struct RecordFormView: View {
             }
             Button("保存") {
                 let hospitalName: String
-                if selectedHospitalIndex == hospitalList.count {
+                if selectedHospitalIndex == settings.hospitalList.count {
                     hospitalName = newHospital
-                    if !hospitalList.contains(newHospital) && !newHospital.isEmpty {
-                        hospitalList.append(newHospital)
-                    }
                 } else {
-                    hospitalName = hospitalList[selectedHospitalIndex]
+                    hospitalName = settings.hospitalList[selectedHospitalIndex]
                 }
-                let record = Record(
-                    date: date,
-                    hospital: hospitalName,
-                    title: testTypes[selectedTestIndex],
-                    detail: detail,
-                    results: results.map { $0.toResult() }
-                )
-                onSave(record)
+                
+                let testResults = results.map { input in
+                    TestResult(
+                        ear: input.ear,
+                        condition: input.condition,
+                        thresholdsRight: input.ear == "右耳のみ" ? input.thresholdsRight : nil,
+                        thresholdsLeft: input.ear == "左耳のみ" ? input.thresholdsLeft : nil,
+                        thresholdsBoth: input.ear == "両耳" ? input.thresholdsBoth : nil,
+                        freqs: input.freqs
+                    )
+                }
+                
+                onSave(hospitalName, settings.testTypes[selectedTestIndex], date, detail, testResults)
                 presentationMode.wrappedValue.dismiss()
             }
             .foregroundColor(.blue)
@@ -125,5 +125,25 @@ struct RecordFormView: View {
             }
         }
         .navigationTitle(isEditing ? "記録の編集" : "検査記録を追加")
+    }
+}
+
+extension TestResult {
+    func toInput() -> TestResultInput {
+        var input = TestResultInput()
+        input.ear = self.ear
+        input.condition = self.condition
+        
+        if let right = self.thresholdsRight {
+            input.thresholdsRight = right
+        }
+        if let left = self.thresholdsLeft {
+            input.thresholdsLeft = left
+        }
+        if let both = self.thresholdsBoth {
+            input.thresholdsBoth = both
+        }
+        
+        return input
     }
 }

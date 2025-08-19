@@ -1,15 +1,25 @@
 import SwiftUI
+import SwiftData
 
 struct ContentView: View {
-    @State private var records: [Record] = []
-    @State private var editingIndex: Int? = nil
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \Record.date, order: .reverse) private var records: [Record]
+    @Query private var appSettings: [AppSettings]
+    
+    @State private var editingRecord: Record? = nil
     @State private var showForm = false
     @State private var isEditing = false
-    @State private var editingRecord: Record? = nil
-
-    // 病院・検査名マスタ
-    @State private var hospitalList: [String] = ["千葉こども耳鼻科", "東京医大", "柏総合病院"]
-    @State private var testTypes: [String] = ["ABR検査", "OAE検査", "ASSR検査", "ピュアトーン聴力検査", "語音聴力検査", "インピーダンスオージオメトリー", "その他"]
+    @State private var showSettings = false
+    
+    private var settings: AppSettings {
+        if let firstSettings = appSettings.first {
+            return firstSettings
+        } else {
+            let newSettings = AppSettings()
+            modelContext.insert(newSettings)
+            return newSettings
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -22,17 +32,17 @@ struct ContentView: View {
                     Text("おみみ手帳")
                         .font(.title)
                         .bold()
+                        .foregroundColor(.black)
                         .padding(.bottom, 10)
                     ScrollView {
                         VStack(spacing: 16) {
-                            ForEach(records.indices, id: \.self) { idx in
+                            ForEach(records) { record in
                                 Button(action: {
-                                    editingIndex = idx
-                                    editingRecord = records[idx]
+                                    editingRecord = record
                                     isEditing = true
                                     showForm = true
                                 }) {
-                                    RecordCard(record: records[idx])
+                                    RecordCard(record: record)
                                 }
                                 .buttonStyle(PlainButtonStyle())
                             }
@@ -43,20 +53,44 @@ struct ContentView: View {
                     Spacer()
                 }
 
-                // 新規登録ボタン
-                Button(action: {
-                    editingRecord = nil
-                    isEditing = false
-                    showForm = true
-                }) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 30, weight: .bold))
-                        .foregroundColor(.white)
-                        .padding()
-                        .background(Color.orange)
-                        .clipShape(Circle())
-                        .shadow(radius: 5)
+                HStack {
+                    // 設定ボタン（左下）
+                    Button(action: {
+                        showSettings = true
+                    }) {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 24, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Color.gray)
+                            .clipShape(Circle())
+                            .shadow(radius: 5)
+                    }
+                    
+                    Spacer()
+                    
+                    // 新規登録ボタン（中央下）
+                    Button(action: {
+                        editingRecord = nil
+                        isEditing = false
+                        showForm = true
+                    }) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 30, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Color.orange)
+                            .clipShape(Circle())
+                            .shadow(radius: 5)
+                    }
+                    
+                    Spacer()
+                    
+                    // 右側のスペース（バランス用）
+                    Color.clear
+                        .frame(width: 56, height: 56)
                 }
+                .padding(.horizontal, 30)
                 .padding(.bottom, 25)
             }
             .navigationBarHidden(true)
@@ -64,28 +98,39 @@ struct ContentView: View {
             .navigationDestination(isPresented: $showForm) {
                 RecordFormView(
                     record: editingRecord,
-                    hospitalList: hospitalList,
-                    testTypes: testTypes,
+                    settings: settings,
                     isEditing: isEditing,
-                    onSave: { newRecord in
-                        if isEditing, let idx = editingIndex {
-                            records[idx] = newRecord
+                    onSave: { hospital, title, date, detail, results in
+                        if isEditing, let editingRecord = editingRecord {
+                            editingRecord.hospital = hospital
+                            editingRecord.title = title
+                            editingRecord.date = date
+                            editingRecord.detail = detail
+                            editingRecord.results = results
                         } else {
-                            records.insert(newRecord, at: 0)
+                            let newRecord = Record(date: date, hospital: hospital, title: title, detail: detail, results: results)
+                            modelContext.insert(newRecord)
                         }
+                        
                         // 新しい病院が追加された場合はリストにも反映
-                        if !hospitalList.contains(newRecord.hospital) {
-                            hospitalList.append(newRecord.hospital)
+                        if !settings.hospitalList.contains(hospital) {
+                            settings.hospitalList.append(hospital)
                         }
+                        
+                        try? modelContext.save()
                         showForm = false
                     },
                     onDelete: {
-                        if let idx = editingIndex {
-                            records.remove(at: idx)
+                        if let editingRecord = editingRecord {
+                            modelContext.delete(editingRecord)
+                            try? modelContext.save()
                         }
                         showForm = false
                     }
                 )
+            }
+            .navigationDestination(isPresented: $showSettings) {
+                SettingsView(settings: settings)
             }
         }
     }
