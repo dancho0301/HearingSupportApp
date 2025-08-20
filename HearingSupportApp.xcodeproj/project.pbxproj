@@ -6,11 +6,27 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		5AF13F642E556A8F00A08A53 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5AF513432DE5C3DF00E4833F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5AF5134A2DE5C3DF00E4833F;
+			remoteInfo = HearingSupportApp;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		5AF13F602E556A8F00A08A53 /* HearingSupportAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HearingSupportAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5AF5134B2DE5C3DF00E4833F /* HearingSupportApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HearingSupportApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		5AF13F612E556A8F00A08A53 /* HearingSupportAppTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = HearingSupportAppTests;
+			sourceTree = "<group>";
+		};
 		5AF5134D2DE5C3DF00E4833F /* HearingSupportApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = HearingSupportApp;
@@ -19,6 +35,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		5AF13F5D2E556A8F00A08A53 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		5AF513482DE5C3DF00E4833F /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -33,6 +56,7 @@
 			isa = PBXGroup;
 			children = (
 				5AF5134D2DE5C3DF00E4833F /* HearingSupportApp */,
+				5AF13F612E556A8F00A08A53 /* HearingSupportAppTests */,
 				5AF5134C2DE5C3DF00E4833F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +65,7 @@
 			isa = PBXGroup;
 			children = (
 				5AF5134B2DE5C3DF00E4833F /* HearingSupportApp.app */,
+				5AF13F602E556A8F00A08A53 /* HearingSupportAppTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -48,6 +73,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		5AF13F5F2E556A8F00A08A53 /* HearingSupportAppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5AF13F662E556A8F00A08A53 /* Build configuration list for PBXNativeTarget "HearingSupportAppTests" */;
+			buildPhases = (
+				5AF13F5C2E556A8F00A08A53 /* Sources */,
+				5AF13F5D2E556A8F00A08A53 /* Frameworks */,
+				5AF13F5E2E556A8F00A08A53 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				5AF13F652E556A8F00A08A53 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				5AF13F612E556A8F00A08A53 /* HearingSupportAppTests */,
+			);
+			name = HearingSupportAppTests;
+			packageProductDependencies = (
+			);
+			productName = HearingSupportAppTests;
+			productReference = 5AF13F602E556A8F00A08A53 /* HearingSupportAppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		5AF5134A2DE5C3DF00E4833F /* HearingSupportApp */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 5AF5135B2DE5C3E000E4833F /* Build configuration list for PBXNativeTarget "HearingSupportApp" */;
@@ -77,9 +125,13 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1620;
+				LastSwiftUpdateCheck = 1640;
 				LastUpgradeCheck = 1640;
 				TargetAttributes = {
+					5AF13F5F2E556A8F00A08A53 = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = 5AF5134A2DE5C3DF00E4833F;
+					};
 					5AF5134A2DE5C3DF00E4833F = {
 						CreatedOnToolsVersion = 16.2;
 					};
@@ -100,11 +152,19 @@
 			projectRoot = "";
 			targets = (
 				5AF5134A2DE5C3DF00E4833F /* HearingSupportApp */,
+				5AF13F5F2E556A8F00A08A53 /* HearingSupportAppTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		5AF13F5E2E556A8F00A08A53 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		5AF513492DE5C3DF00E4833F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -115,6 +175,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		5AF13F5C2E556A8F00A08A53 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		5AF513472DE5C3DF00E4833F /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -124,7 +191,53 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		5AF13F652E556A8F00A08A53 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5AF5134A2DE5C3DF00E4833F /* HearingSupportApp */;
+			targetProxy = 5AF13F642E556A8F00A08A53 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		5AF13F672E556A8F00A08A53 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6549AY6J4G;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = jp.dancho.HearingSupportAppTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HearingSupportApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/HearingSupportApp";
+			};
+			name = Debug;
+		};
+		5AF13F682E556A8F00A08A53 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6549AY6J4G;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = jp.dancho.HearingSupportAppTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HearingSupportApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/HearingSupportApp";
+			};
+			name = Release;
+		};
 		5AF513592DE5C3E000E4833F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -305,6 +418,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		5AF13F662E556A8F00A08A53 /* Build configuration list for PBXNativeTarget "HearingSupportAppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5AF13F672E556A8F00A08A53 /* Debug */,
+				5AF13F682E556A8F00A08A53 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		5AF513462DE5C3DF00E4833F /* Build configuration list for PBXProject "HearingSupportApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
