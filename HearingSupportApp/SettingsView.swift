@@ -21,14 +21,14 @@ struct SettingsView: View {
                         Text("バージョン")
                         Spacer()
                         Text("1.0.0")
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.gray)
                     }
                     
                     HStack {
                         Text("アプリ名")
                         Spacer()
                         Text("おみみ手帳")
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.gray)
                     }
                 }
                 
@@ -50,6 +50,7 @@ struct SettingsView: View {
                     }
                 }
             }
+            .background(Color(red: 1.0, green: 0.97, blue: 0.92))
             .navigationTitle("設定")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -76,6 +77,7 @@ struct HospitalListView: View {
             }
             .onDelete(perform: deleteHospital)
         }
+        .background(Color(red: 1.0, green: 0.97, blue: 0.92))
         .navigationTitle("病院リスト")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -119,6 +121,7 @@ struct TestTypeListView: View {
             }
             .onDelete(perform: deleteTestType)
         }
+        .background(Color(red: 1.0, green: 0.97, blue: 0.92))
         .navigationTitle("検査種類リスト")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

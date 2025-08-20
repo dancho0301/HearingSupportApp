@@ -25,7 +25,7 @@ The app uses three main data structures:
 - `TestResultInput`: Input helper for collecting test data before conversion to TestResult
 
 ### SwiftData Integration
-
+a
 The app is configured to use SwiftData for persistence:
 - ModelContainer setup in `HearingSupportAppApp.swift` 
 - Schema includes `Record`, `TestResult`, and `AppSettings` models

@@ -15,6 +15,7 @@ struct HearingSupportAppApp: App {
             Record.self,
             TestResult.self,
             AppSettings.self,
+            Appointment.self,
         ])
         
         // データベースを強制的にリセットするための設定

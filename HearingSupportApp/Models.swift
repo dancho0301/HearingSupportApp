@@ -152,3 +152,106 @@ struct TestResultInput: Identifiable, Hashable {
         )
     }
 }
+
+// TestResult用のextension
+extension TestResult {
+    // 検査結果パターンに応じた固有色を返す
+    var displayColor: Color {
+        switch (ear, condition) {
+        case ("両耳", "裸耳"):
+            return .blue
+        case ("両耳", "補聴器・人工内耳"):
+            return .cyan
+        case ("右耳のみ", "裸耳"):
+            return .red
+        case ("右耳のみ", "補聴器・人工内耳"):
+            return .orange
+        case ("左耳のみ", "裸耳"):
+            return .green
+        case ("左耳のみ", "補聴器・人工内耳"):
+            return .mint
+        default:
+            return .gray
+        }
+    }
+    
+    // グラフ表示用のデータを取得
+    var graphData: [Int?]? {
+        switch ear {
+        case "右耳のみ":
+            return thresholdsRight
+        case "左耳のみ":
+            return thresholdsLeft
+        case "両耳":
+            return thresholdsBoth
+        default:
+            return nil
+        }
+    }
+    
+    // 表示用ラベル
+    var displayLabel: String {
+        return "\(ear)・\(condition)"
+    }
+}
+
+// 通院予定モデル
+@Model
+final class Appointment {
+    var id: UUID
+    var hospital: String
+    var appointmentDate: Date
+    var appointmentTime: Date
+    var purpose: String
+    var notes: String
+    var isCompleted: Bool
+    var reminderEnabled: Bool
+    var reminderTime: Date?
+    
+    init(hospital: String, appointmentDate: Date, appointmentTime: Date, purpose: String, notes: String = "", reminderEnabled: Bool = true) {
+        self.id = UUID()
+        self.hospital = hospital
+        self.appointmentDate = appointmentDate
+        self.appointmentTime = appointmentTime
+        self.purpose = purpose
+        self.notes = notes
+        self.isCompleted = false
+        self.reminderEnabled = reminderEnabled
+        
+        // デフォルトで1時間前にリマインダー設定
+        if reminderEnabled {
+            let calendar = Calendar.current
+            let dateComponents = calendar.dateComponents([.year, .month, .day], from: appointmentDate)
+            let timeComponents = calendar.dateComponents([.hour, .minute], from: appointmentTime)
+            
+            var combinedComponents = DateComponents()
+            combinedComponents.year = dateComponents.year
+            combinedComponents.month = dateComponents.month
+            combinedComponents.day = dateComponents.day
+            combinedComponents.hour = timeComponents.hour
+            combinedComponents.minute = timeComponents.minute
+            
+            if let appointmentDateTime = calendar.date(from: combinedComponents) {
+                self.reminderTime = calendar.date(byAdding: .hour, value: -1, to: appointmentDateTime)
+            }
+        }
+    }
+    
+    // 予定日時を組み合わせた Date を取得
+    var fullAppointmentDate: Date {
+        let calendar = Calendar.current
+        let dateComponents = calendar.dateComponents([.year, .month, .day], from: appointmentDate)
+        let timeComponents = calendar.dateComponents([.hour, .minute], from: appointmentTime)
+        
+        var combinedComponents = DateComponents()
+        combinedComponents.year = dateComponents.year
+        combinedComponents.month = dateComponents.month
+        combinedComponents.day = dateComponents.day
+        combinedComponents.hour = timeComponents.hour
+        combinedComponents.minute = timeComponents.minute
+        
+        let result = calendar.date(from: combinedComponents) ?? appointmentDate
+        print("fullAppointmentDate計算: \(hospital) - 日付:\(appointmentDate) 時刻:\(appointmentTime) → 結果:\(result)")
+        return result
+    }
+}

@@ -34,7 +34,7 @@ struct TestResultInputView: View {
                                     get: { Double(result.thresholdsRight[i] ?? 0) },
                                     set: { result.thresholdsRight[i] = Int($0) }
                                 ),
-                                in: 0...120, step: 1
+                                in: 0...120, step: 5
                             )
                             Text("\(result.thresholdsRight[i] ?? 0) dB")
                                 .font(.caption2)
@@ -53,7 +53,7 @@ struct TestResultInputView: View {
                                     get: { Double(result.thresholdsLeft[i] ?? 0) },
                                     set: { result.thresholdsLeft[i] = Int($0) }
                                 ),
-                                in: 0...120, step: 1
+                                in: 0...120, step: 5
                             )
                             Text("\(result.thresholdsLeft[i] ?? 0) dB")
                                 .font(.caption2)
@@ -73,7 +73,7 @@ struct TestResultInputView: View {
                                     get: { Double(result.thresholdsBoth[i] ?? 0) },
                                     set: { result.thresholdsBoth[i] = Int($0) }
                                 ),
-                                in: 0...120, step: 1
+                                in: 0...120, step: 5
                             )
                             Text("\(result.thresholdsBoth[i] ?? 0) dB")
                                 .font(.caption2)
