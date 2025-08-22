@@ -369,6 +369,9 @@
 				DEVELOPMENT_ASSET_PATHS = "\"HearingSupportApp/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "おみみ手帳";
+				INFOPLIST_KEY_NSCameraUsageDescription = "聴力検査結果の紙を撮影して取り込むためにカメラアクセスが必要です。";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "お子さまの聞こえ方をシミュレーションするため、音声の録音と処理にマイクロフォンアクセスが必要です。録音されたデータは外部に送信されません。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -397,6 +400,9 @@
 				DEVELOPMENT_ASSET_PATHS = "\"HearingSupportApp/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "おみみ手帳";
+				INFOPLIST_KEY_NSCameraUsageDescription = "聴力検査結果の紙を撮影して取り込むためにカメラアクセスが必要です。";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "お子さまの聞こえ方をシミュレーションするため、音声の録音と処理にマイクロフォンアクセスが必要です。録音されたデータは外部に送信されません。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

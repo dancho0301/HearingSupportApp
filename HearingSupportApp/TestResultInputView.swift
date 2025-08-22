@@ -10,6 +10,9 @@ import SwiftUI
 
 struct TestResultInputView: View {
     @Binding var result: TestResultInput
+    @State private var showingCamera = false
+    @State private var recognizedText = ""
+    @State private var showingOCRResult = false
 
     var body: some View {
         VStack(alignment: .leading) {
@@ -22,6 +25,39 @@ struct TestResultInputView: View {
                     ForEach(result.conditionOptions, id: \.self) { Text($0) }
                 }
                 .pickerStyle(.segmented)
+            }
+            
+            HStack {
+                Button(action: {
+                    showingCamera = true
+                }) {
+                    HStack {
+                        Image(systemName: "camera")
+                        Text("検査結果を撮影")
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
+                }
+                .sheet(isPresented: $showingCamera) {
+                    CameraOCRView(recognizedText: $recognizedText, isPresented: $showingCamera)
+                }
+                .onChange(of: recognizedText) { _, newText in
+                    if !newText.isEmpty {
+                        parseOCRResult(newText)
+                        showingOCRResult = true
+                    }
+                }
+                
+                Spacer()
+            }
+            .padding(.bottom, 10)
+            .alert("OCR認識結果", isPresented: $showingOCRResult) {
+                Button("OK") { recognizedText = "" }
+            } message: {
+                Text("認識されたテキスト:\n\(recognizedText)")
             }
             if result.ear == "右耳のみ" {
                 ForEach(0..<result.freqs.count, id: \.self) { i in
@@ -85,5 +121,15 @@ struct TestResultInputView: View {
             Divider()
         }
         .padding(.vertical, 5)
+    }
+    
+    private func parseOCRResult(_ text: String) {
+        if let parsedResult = HearingTestParser.parseOCRText(text) {
+            result.ear = parsedResult.ear
+            result.condition = parsedResult.condition
+            result.thresholdsRight = parsedResult.thresholdsRight
+            result.thresholdsLeft = parsedResult.thresholdsLeft
+            result.thresholdsBoth = parsedResult.thresholdsBoth
+        }
     }
 }

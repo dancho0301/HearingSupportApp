@@ -45,6 +45,7 @@ struct ContentView: View {
                                 }
                             }
                             
+                            
                             ForEach(records) { record in
                                 Button(action: {
                                     editingRecord = record
@@ -57,7 +58,7 @@ struct ContentView: View {
                             }
                         }
                         .padding(.horizontal)
-                        .padding(.bottom, 30)
+                        .padding(.bottom, 100)
                     }
                     Spacer()
                 }

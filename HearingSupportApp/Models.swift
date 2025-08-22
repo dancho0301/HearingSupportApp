@@ -98,17 +98,49 @@ final class TestResult {
     }
 }
 
+struct TestTypeSetting: Codable, Identifiable, Hashable {
+    let id = UUID()
+    var name: String
+    var isEnabled: Bool
+    
+    init(name: String, isEnabled: Bool = true) {
+        self.name = name
+        self.isEnabled = isEnabled
+    }
+}
+
+struct HospitalSetting: Codable, Identifiable, Hashable {
+    let id = UUID()
+    var name: String
+    var isEnabled: Bool
+    
+    init(name: String, isEnabled: Bool = true) {
+        self.name = name
+        self.isEnabled = isEnabled
+    }
+}
+
 @Model
 final class AppSettings {
     var id: UUID
     var hospitalListData: Data
     var testTypesData: Data
+    var testTypeSettingsData: Data?
+    var hospitalSettingsData: Data?
     
     init(hospitalList: [String] = ["千葉こども耳鼻科", "東京医大", "柏総合病院"], 
          testTypes: [String] = ["ABR検査", "OAE検査", "ASSR検査", "ピュアトーン聴力検査", "語音聴力検査", "インピーダンスオージオメトリー", "その他"]) {
         self.id = UUID()
         self.hospitalListData = (try? JSONEncoder().encode(hospitalList)) ?? Data()
         self.testTypesData = (try? JSONEncoder().encode(testTypes)) ?? Data()
+        
+        // デフォルトの検査種類設定（すべて有効）
+        let defaultTestTypeSettings = testTypes.map { TestTypeSetting(name: $0, isEnabled: true) }
+        self.testTypeSettingsData = try? JSONEncoder().encode(defaultTestTypeSettings)
+        
+        // デフォルトの病院設定（すべて有効）
+        let defaultHospitalSettings = hospitalList.map { HospitalSetting(name: $0, isEnabled: true) }
+        self.hospitalSettingsData = try? JSONEncoder().encode(defaultHospitalSettings)
     }
     
     var hospitalList: [String] {
@@ -127,6 +159,66 @@ final class AppSettings {
         set {
             testTypesData = (try? JSONEncoder().encode(newValue)) ?? Data()
         }
+    }
+    
+    var testTypeSettings: [TestTypeSetting] {
+        get {
+            guard let data = testTypeSettingsData else {
+                // データがない場合、現在の検査種類から初期設定を作成
+                let initialSettings = testTypes.map { TestTypeSetting(name: $0, isEnabled: true) }
+                testTypeSettingsData = try? JSONEncoder().encode(initialSettings)
+                return initialSettings
+            }
+            
+            let settings = (try? JSONDecoder().decode([TestTypeSetting].self, from: data)) ?? []
+            
+            // 設定が空の場合、現在の検査種類から初期設定を作成
+            if settings.isEmpty {
+                let initialSettings = testTypes.map { TestTypeSetting(name: $0, isEnabled: true) }
+                testTypeSettingsData = try? JSONEncoder().encode(initialSettings)
+                return initialSettings
+            }
+            
+            return settings
+        }
+        set {
+            testTypeSettingsData = try? JSONEncoder().encode(newValue)
+        }
+    }
+    
+    // 有効な検査種類のみを取得
+    var enabledTestTypes: [String] {
+        return testTypeSettings.filter { $0.isEnabled }.map { $0.name }
+    }
+    
+    var hospitalSettings: [HospitalSetting] {
+        get {
+            guard let data = hospitalSettingsData else {
+                // データがない場合、現在の病院リストから初期設定を作成
+                let initialSettings = hospitalList.map { HospitalSetting(name: $0, isEnabled: true) }
+                hospitalSettingsData = try? JSONEncoder().encode(initialSettings)
+                return initialSettings
+            }
+            
+            let settings = (try? JSONDecoder().decode([HospitalSetting].self, from: data)) ?? []
+            
+            // 設定が空の場合、現在の病院リストから初期設定を作成
+            if settings.isEmpty {
+                let initialSettings = hospitalList.map { HospitalSetting(name: $0, isEnabled: true) }
+                hospitalSettingsData = try? JSONEncoder().encode(initialSettings)
+                return initialSettings
+            }
+            
+            return settings
+        }
+        set {
+            hospitalSettingsData = try? JSONEncoder().encode(newValue)
+        }
+    }
+    
+    // 有効な病院のみを取得
+    var enabledHospitals: [String] {
+        return hospitalSettings.filter { $0.isEnabled }.map { $0.name }
     }
 }
 

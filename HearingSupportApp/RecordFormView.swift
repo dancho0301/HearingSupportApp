@@ -31,14 +31,14 @@ struct RecordFormView: View {
     ) {
         _date = State(initialValue: record?.date ?? Date())
         self.settings = settings
-        if let rec = record, let idx = settings.hospitalList.firstIndex(of: rec.hospital) {
+        if let rec = record, let idx = settings.enabledHospitals.firstIndex(of: rec.hospital) {
             _selectedHospitalIndex = State(initialValue: idx)
             _newHospital = State(initialValue: "")
         } else {
-            _selectedHospitalIndex = State(initialValue: settings.hospitalList.count)
+            _selectedHospitalIndex = State(initialValue: settings.enabledHospitals.count)
             _newHospital = State(initialValue: record?.hospital ?? "")
         }
-        if let rec = record, let tIdx = settings.testTypes.firstIndex(of: rec.title) {
+        if let rec = record, let tIdx = settings.enabledTestTypes.firstIndex(of: rec.title) {
             _selectedTestIndex = State(initialValue: tIdx)
         } else {
             _selectedTestIndex = State(initialValue: 0)
@@ -57,20 +57,20 @@ struct RecordFormView: View {
                     .datePickerStyle(.compact)
                     .environment(\.locale, Locale(identifier: "ja_JP"))
                 Picker("病院名", selection: $selectedHospitalIndex) {
-                    ForEach(0..<(settings.hospitalList.count + 1), id: \.self) { idx in
-                        if idx < settings.hospitalList.count {
-                            Text(settings.hospitalList[idx])
+                    ForEach(0..<(settings.enabledHospitals.count + 1), id: \.self) { idx in
+                        if idx < settings.enabledHospitals.count {
+                            Text(settings.enabledHospitals[idx])
                         } else {
                             Text("新規入力")
                         }
                     }
                 }
-                if selectedHospitalIndex == settings.hospitalList.count {
+                if selectedHospitalIndex == settings.enabledHospitals.count {
                     TextField("新しい病院名を入力", text: $newHospital)
                 }
                 Picker("検査名", selection: $selectedTestIndex) {
-                    ForEach(0..<settings.testTypes.count, id: \.self) {
-                        Text(settings.testTypes[$0])
+                    ForEach(0..<settings.enabledTestTypes.count, id: \.self) {
+                        Text(settings.enabledTestTypes[$0])
                     }
                 }
             }
@@ -96,10 +96,10 @@ struct RecordFormView: View {
             }
             Button("保存") {
                 let hospitalName: String
-                if selectedHospitalIndex == settings.hospitalList.count {
+                if selectedHospitalIndex == settings.enabledHospitals.count {
                     hospitalName = newHospital
                 } else {
-                    hospitalName = settings.hospitalList[selectedHospitalIndex]
+                    hospitalName = settings.enabledHospitals[selectedHospitalIndex]
                 }
                 
                 let testResults = results.map { input in
@@ -113,7 +113,7 @@ struct RecordFormView: View {
                     )
                 }
                 
-                onSave(hospitalName, settings.testTypes[selectedTestIndex], date, detail, testResults)
+                onSave(hospitalName, settings.enabledTestTypes[selectedTestIndex], date, detail, testResults)
                 presentationMode.wrappedValue.dismiss()
             }
             .foregroundColor(.blue)

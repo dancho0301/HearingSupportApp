@@ -140,7 +140,7 @@ struct GraphLegend: View {
                         .frame(width: 8, height: 8)
                     Text(result.displayLabel)
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.gray)
                     Spacer()
                 }
             }
