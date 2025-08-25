@@ -12,6 +12,7 @@ import SwiftData
 struct HearingSupportAppApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
+            Child.self,
             Record.self,
             TestResult.self,
             AppSettings.self,

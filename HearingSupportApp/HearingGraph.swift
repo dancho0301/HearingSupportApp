@@ -12,77 +12,91 @@ struct HearingGraph: View {
     
     var body: some View {
         VStack(spacing: 8) {
-            // 統合されたグラフ
-            GeometryReader { geo in
-                ZStack {
-                    // Y軸のスケール線（0dB, 20dB, 40dB, 60dB, 80dB, 100dB, 120dB）
-                    ForEach(0...6, id: \.self) { level in
-                        let y = geo.size.height * CGFloat(level) / 6.0
-                        Path { path in
-                            path.move(to: CGPoint(x: 0, y: y))
-                            path.addLine(to: CGPoint(x: geo.size.width, y: y))
-                        }
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 0.5)
-                    }
-                    
-                    // X軸のスケール線（各周波数）
-                    ForEach(0..<7, id: \.self) { freqIndex in
-                        let x = geo.size.width * CGFloat(freqIndex) / 6.0
-                        Path { path in
-                            path.move(to: CGPoint(x: x, y: 0))
-                            path.addLine(to: CGPoint(x: x, y: geo.size.height))
-                        }
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 0.5)
-                    }
-                    
-                    // 各検査結果のライン
-                    ForEach(testResults, id: \.id) { result in
-                        if let graphData = result.graphData {
-                            SingleLineGraph(
-                                freqs: result.freqs,
-                                values: graphData,
-                                color: result.displayColor,
-                                geometrySize: geo.size
-                            )
+            // Y軸ラベル付きグラフ
+            HStack(alignment: .top, spacing: 8) {
+                // Y軸ラベル（左側に縦配置）
+                GeometryReader { labelGeo in
+                    ZStack {
+                        ForEach(0...6, id: \.self) { level in
+                            let dbValue = level * 20
+                            let y = labelGeo.size.height * CGFloat(level) / 6.0
+                            Text("\(dbValue)dB")
+                                .font(.caption2)
+                                .foregroundColor(.gray)
+                                .position(x: labelGeo.size.width / 2, y: y)
                         }
                     }
                 }
-            }
-            .frame(height: 120)
-            .background(Color.white)
-            .cornerRadius(8)
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-            )
-            
-            // Y軸ラベル
-            HStack {
-                Text("0dB")
-                    .font(.caption2)
-                    .foregroundColor(.gray)
-                Spacer()
-                Text("120dB")
-                    .font(.caption2)
-                    .foregroundColor(.gray)
+                .frame(width: 35, height: 120)
+                
+                // グラフエリア
+                GeometryReader { geo in
+                    ZStack {
+                        // Y軸のスケール線（0dB, 20dB, 40dB, 60dB, 80dB, 100dB, 120dB）
+                        ForEach(0...6, id: \.self) { level in
+                            let y = geo.size.height * CGFloat(level) / 6.0
+                            Path { path in
+                                path.move(to: CGPoint(x: 0, y: y))
+                                path.addLine(to: CGPoint(x: geo.size.width, y: y))
+                            }
+                            .stroke(Color.gray.opacity(0.2), lineWidth: 0.5)
+                        }
+                        
+                        // X軸のスケール線（各周波数）
+                        ForEach(0..<7, id: \.self) { freqIndex in
+                            let x = geo.size.width * CGFloat(freqIndex) / 6.0
+                            Path { path in
+                                path.move(to: CGPoint(x: x, y: 0))
+                                path.addLine(to: CGPoint(x: x, y: geo.size.height))
+                            }
+                            .stroke(Color.gray.opacity(0.2), lineWidth: 0.5)
+                        }
+                        
+                        // 各検査結果のライン
+                        ForEach(testResults, id: \.id) { result in
+                            if let graphData = result.graphData {
+                                SingleLineGraph(
+                                    freqs: result.freqs,
+                                    values: graphData,
+                                    color: result.displayColor,
+                                    geometrySize: geo.size
+                                )
+                            }
+                        }
+                    }
+                }
+                .frame(height: 120)
+                .background(Color.white)
+                .cornerRadius(8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                )
             }
             
             // X軸ラベル（周波数）
             if let freqs = testResults.first?.freqs {
-                HStack {
-                    ForEach(freqs, id: \.self) { freq in
-                        Text(freq)
-                            .font(.caption2)
-                            .foregroundColor(.gray)
-                        if freq != freqs.last {
-                            Spacer()
+                HStack(spacing: 8) {
+                    // Y軸ラベルの幅と合わせるためのスペーサー
+                    Spacer()
+                        .frame(width: 35)
+                    
+                    // 周波数ラベル
+                    HStack {
+                        ForEach(freqs, id: \.self) { freq in
+                            Text(freq)
+                                .font(.caption2)
+                                .foregroundColor(.gray)
+                            if freq != freqs.last {
+                                Spacer()
+                            }
                         }
                     }
                 }
             }
             
-            // 凡例
-            GraphLegend(testResults: testResults)
+            // 数値データ表
+            TestResultsTable(testResults: testResults)
         }
     }
 }
@@ -125,24 +139,81 @@ struct SingleLineGraph: View {
     }
 }
 
-struct GraphLegend: View {
+struct TestResultsTable: View {
     let testResults: [TestResult]
     
     var body: some View {
-        LazyVGrid(columns: [
-            GridItem(.flexible()),
-            GridItem(.flexible())
-        ], spacing: 4) {
-            ForEach(testResults, id: \.id) { result in
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(result.displayColor)
-                        .frame(width: 8, height: 8)
-                    Text(result.displayLabel)
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                    Spacer()
+        VStack(alignment: .leading, spacing: 8) {
+            // 表形式で検査結果を表示
+            if !testResults.isEmpty, let freqs = testResults.first?.freqs {
+                VStack(spacing: 0) {
+                    // ヘッダー行
+                    HStack(spacing: 0) {
+                        Text("検査条件")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .frame(width: 70, alignment: .center)
+                            .padding(.vertical, 6)
+                            .background(Color(.systemGray2))
+                        
+                        ForEach(freqs, id: \.self) { freq in
+                            Text(freq)
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+                                .frame(minWidth: 40, alignment: .center)
+                                .padding(.vertical, 6)
+                                .background(Color(.systemGray2))
+                        }
+                    }
+                    
+                    // データ行
+                    ForEach(testResults, id: \.id) { result in
+                        HStack(spacing: 0) {
+                            // 検査条件ラベル
+                            HStack(spacing: 4) {
+                                Circle()
+                                    .fill(result.displayColor)
+                                    .frame(width: 6, height: 6)
+                                Text(result.displayLabel)
+                                    .font(.caption2)
+                                    .foregroundColor(.black)
+                                    .lineLimit(1)
+                            }
+                            .frame(width: 70, alignment: .center)
+                            .padding(.vertical, 4)
+                            .background(Color(.systemGray6).opacity(0.5))
+                            
+                            // データ値
+                            if let graphData = result.graphData {
+                                ForEach(0..<freqs.count, id: \.self) { index in
+                                    Text(index < graphData.count && graphData[index] != nil ? "\(graphData[index]!)" : "-")
+                                        .font(.caption)
+                                        .foregroundColor(.black)
+                                        .frame(minWidth: 40, alignment: .center)
+                                        .padding(.vertical, 4)
+                                        .background(Color.white)
+                                }
+                            } else {
+                                ForEach(freqs, id: \.self) { _ in
+                                    Text("-")
+                                        .font(.caption)
+                                        .foregroundColor(.black)
+                                        .frame(minWidth: 40, alignment: .center)
+                                        .padding(.vertical, 4)
+                                        .background(Color.white)
+                                }
+                            }
+                        }
+                    }
                 }
+                .overlay(
+                    Rectangle()
+                        .stroke(Color(.systemGray4), lineWidth: 1)
+                )
+                .cornerRadius(8)
+                .clipped()
             }
         }
     }

@@ -10,6 +10,7 @@ import SwiftUI
 // 記録カード
 struct RecordCard: View {
     let record: Record
+    @State private var showPrintPreview = false
     
     private let formatter: DateFormatter = {
         let f = DateFormatter()
@@ -26,6 +27,19 @@ struct RecordCard: View {
                     .font(.title3)
                     .foregroundColor(.orange)
                 Spacer()
+                
+                // 印刷プレビューボタン
+                Button(action: {
+                    showPrintPreview = true
+                }) {
+                    Image(systemName: "printer")
+                        .font(.subheadline)
+                        .foregroundColor(.blue)
+                        .padding(8)
+                        .background(Color.blue.opacity(0.1))
+                        .cornerRadius(8)
+                }
+                
                 Text(record.hospital)
                     .font(.subheadline)
                     .foregroundColor(.gray)
@@ -50,36 +64,14 @@ struct RecordCard: View {
                     
                     // 1枚のグラフに全パターンを表示
                     HearingGraph(testResults: record.results)
-                    
-                    // 数値データ詳細表示
-                    VStack(alignment: .leading, spacing: 4) {
-                        ForEach(record.results, id: \.id) { result in
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("【\(result.displayLabel)】")
-                                    .font(.caption)
-                                    .bold()
-                                    .foregroundColor(result.displayColor)
-                                
-                                if let graphData = result.graphData {
-                                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 4) {
-                                        ForEach(0..<result.freqs.count, id: \.self) { i in
-                                            if i < graphData.count {
-                                                Text("\(result.freqs[i]): \(graphData[i] != nil ? "\(graphData[i]!)dB" : "-")")
-                                                    .font(.caption2)
-                                                    .foregroundColor(result.displayColor)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            .padding(.vertical, 2)
-                        }
-                    }
                 }
             }
         }
         .padding()
         .background(Color.white)
         .cornerRadius(16)
+        .sheet(isPresented: $showPrintPreview) {
+            PrintPreviewView(record: record)
+        }
     }
 }

@@ -3,15 +3,19 @@ import SwiftData
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Record.date, order: .reverse) private var records: [Record]
+    @Query(sort: \Record.date, order: .reverse) private var allRecords: [Record]
     @Query private var appSettings: [AppSettings]
-    @Query(sort: \Appointment.appointmentDate, order: .forward) private var appointments: [Appointment]
+    @Query(sort: \Appointment.appointmentDate, order: .forward) private var allAppointments: [Appointment]
+    @Query(sort: \Child.createdAt) private var children: [Child]
     
     @State private var editingRecord: Record? = nil
     @State private var showForm = false
     @State private var isEditing = false
     @State private var showSettings = false
     @State private var showAppointments = false
+    @State private var showChildSelection = false
+    @State private var showInitialSetup = false
+    @State private var selectedChild: Child? = nil
     
     private var settings: AppSettings {
         if let firstSettings = appSettings.first {
@@ -22,6 +26,23 @@ struct ContentView: View {
             return newSettings
         }
     }
+    
+    // 現在選択中のこどもの記録のみを取得
+    private var records: [Record] {
+        guard let selectedChild = selectedChild else { return [] }
+        return allRecords.filter { $0.child?.id == selectedChild.id }
+    }
+    
+    // 現在選択中のこどもの予定のみを取得
+    private var appointments: [Appointment] {
+        guard let selectedChild = selectedChild else { return [] }
+        return allAppointments.filter { $0.child?.id == selectedChild.id }
+    }
+    
+    // アクティブなこどもを取得
+    private var activeChildren: [Child] {
+        return children.filter { $0.isActive }
+    }
 
     var body: some View {
         NavigationStack {
@@ -31,11 +52,31 @@ struct ContentView: View {
 
                 VStack(spacing: 0) {
                     Spacer().frame(height: 40)
-                    Text("おみみ手帳")
-                        .font(.title)
-                        .bold()
-                        .foregroundColor(.black)
-                        .padding(.bottom, 10)
+                    
+                    // ヘッダー部分（こども名前表示＋切替ボタン）
+                    Button(action: {
+                        showChildSelection = true
+                    }) {
+                        HStack {
+                            if let selectedChild = selectedChild {
+                                Text(selectedChild.name)
+                                    .font(.title)
+                                    .bold()
+                                    .foregroundColor(.black)
+                            } else {
+                                Text("こどもを選択")
+                                    .font(.title)
+                                    .bold()
+                                    .foregroundColor(.gray)
+                            }
+                            
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.bottom, 10)
                     ScrollView {
                         VStack(spacing: 16) {
                             // 次回の通院予定表示
@@ -127,7 +168,7 @@ struct ContentView: View {
                             editingRecord.detail = detail
                             editingRecord.results = results
                         } else {
-                            let newRecord = Record(date: date, hospital: hospital, title: title, detail: detail, results: results)
+                            let newRecord = Record(date: date, hospital: hospital, title: title, detail: detail, results: results, child: selectedChild)
                             modelContext.insert(newRecord)
                         }
                         
@@ -154,20 +195,86 @@ struct ContentView: View {
             .navigationDestination(isPresented: $showAppointments) {
                 AppointmentListView()
             }
+            .sheet(isPresented: $showChildSelection) {
+                ChildSelectionView(selectedChild: $selectedChild)
+            }
+            .fullScreenCover(isPresented: $showInitialSetup) {
+                InitialSetupView {
+                    showInitialSetup = false
+                    // 作成されたこどもを自動選択
+                    if let newChild = activeChildren.first {
+                        selectedChild = newChild
+                    }
+                }
+            }
             .onAppear {
+                // 初回起動時の処理
+                setupInitialState()
+                
                 // アプリ起動時に通知許可を要求
                 Task {
                     let granted = await NotificationManager.shared.requestPermission()
                     if granted {
                         print("通知許可が得られました")
                         // 既存の予定のリマインダーを設定
-                        await NotificationManager.shared.updateAllAppointmentReminders(appointments: appointments)
+                        await NotificationManager.shared.updateAllAppointmentReminders(appointments: allAppointments)
                     } else {
                         print("通知許可が拒否されました")
                     }
                 }
             }
         }
+    }
+    
+    private func setupInitialState() {
+        // 既存のレコードでこどもが関連付けられていないものの処理
+        migrateOrphanedRecords()
+        
+        // こどもがいない場合は初期設定画面を表示
+        if activeChildren.isEmpty {
+            showInitialSetup = true
+        } else {
+            // 既存のこどもがいる場合、最初のこどもを選択
+            if selectedChild == nil {
+                selectedChild = activeChildren.first
+            }
+        }
+    }
+    
+    private func migrateOrphanedRecords() {
+        // こどもが関連付けられていないレコードを検索
+        let orphanedRecords = allRecords.filter { $0.child == nil }
+        let orphanedAppointments = allAppointments.filter { $0.child == nil }
+        
+        guard !orphanedRecords.isEmpty || !orphanedAppointments.isEmpty else {
+            return
+        }
+        
+        // 最初のアクティブなこどもに関連付け、または新しいこどもを作成
+        var targetChild: Child
+        
+        if let firstActiveChild = activeChildren.first {
+            targetChild = firstActiveChild
+        } else {
+            // こどもが存在しない場合はデフォルトのこどもを作成
+            targetChild = Child(name: "こども", notes: "既存のデータから自動作成")
+            modelContext.insert(targetChild)
+        }
+        
+        // 孤児レコードを関連付け
+        for record in orphanedRecords {
+            record.child = targetChild
+        }
+        
+        // 孤児予定を関連付け
+        for appointment in orphanedAppointments {
+            appointment.child = targetChild
+        }
+        
+        // 変更を保存
+        try? modelContext.save()
+        
+        print("移行処理完了: \(orphanedRecords.count)件のレコードと\(orphanedAppointments.count)件の予定を\(targetChild.name)に関連付けました")
     }
     
     private var nextUpcomingAppointment: Appointment? {

@@ -11,6 +11,29 @@ import SwiftData
 import Foundation
 
 @Model
+final class Child {
+    var id: UUID
+    var name: String
+    var dateOfBirth: Date?
+    var notes: String
+    var isActive: Bool
+    var createdAt: Date
+    var records: [Record]
+    var appointments: [Appointment]
+    
+    init(name: String, dateOfBirth: Date? = nil, notes: String = "") {
+        self.id = UUID()
+        self.name = name
+        self.dateOfBirth = dateOfBirth
+        self.notes = notes
+        self.isActive = true
+        self.createdAt = Date()
+        self.records = []
+        self.appointments = []
+    }
+}
+
+@Model
 final class Record {
     var id: UUID
     var date: Date
@@ -18,14 +41,16 @@ final class Record {
     var title: String
     var detail: String
     var results: [TestResult]
+    var child: Child?
     
-    init(date: Date, hospital: String, title: String, detail: String, results: [TestResult] = []) {
+    init(date: Date, hospital: String, title: String, detail: String, results: [TestResult] = [], child: Child? = nil) {
         self.id = UUID()
         self.date = date
         self.hospital = hospital
         self.title = title
         self.detail = detail
         self.results = results
+        self.child = child
     }
 }
 
@@ -102,10 +127,18 @@ struct TestTypeSetting: Codable, Identifiable, Hashable {
     let id = UUID()
     var name: String
     var isEnabled: Bool
+    var isDefault: Bool
     
-    init(name: String, isEnabled: Bool = true) {
+    init(name: String, isEnabled: Bool = true, isDefault: Bool = false) {
         self.name = name
         self.isEnabled = isEnabled
+        self.isDefault = isDefault
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case name
+        case isEnabled
+        case isDefault
     }
 }
 
@@ -118,6 +151,11 @@ struct HospitalSetting: Codable, Identifiable, Hashable {
         self.name = name
         self.isEnabled = isEnabled
     }
+    
+    enum CodingKeys: String, CodingKey {
+        case name
+        case isEnabled
+    }
 }
 
 @Model
@@ -129,13 +167,26 @@ final class AppSettings {
     var hospitalSettingsData: Data?
     
     init(hospitalList: [String] = ["千葉こども耳鼻科", "東京医大", "柏総合病院"], 
-         testTypes: [String] = ["ABR検査", "OAE検査", "ASSR検査", "ピュアトーン聴力検査", "語音聴力検査", "インピーダンスオージオメトリー", "その他"]) {
+         testTypes: [String] = [
+            "ABR（聴性脳幹反応）",
+            "OAE（耳音響放射）", 
+            "ASSR（聴性定常反応）",
+            "インピーダンスオージオメトリー",
+            "BOA（行動観察聴力検査）",
+            "COR（条件詮索反応聴力検査）",
+            "VRA（視覚強化聴力検査）",
+            "ピュアトーン聴力検査",
+            "語音聴力検査",
+            "MLR（聴性中間反応）",
+            "CAEP（皮質聴性誘発反応）",
+            "REM（実耳測定）"
+        ]) {
         self.id = UUID()
         self.hospitalListData = (try? JSONEncoder().encode(hospitalList)) ?? Data()
         self.testTypesData = (try? JSONEncoder().encode(testTypes)) ?? Data()
         
-        // デフォルトの検査種類設定（すべて有効）
-        let defaultTestTypeSettings = testTypes.map { TestTypeSetting(name: $0, isEnabled: true) }
+        // デフォルトの検査種類設定（すべて有効、デフォルト検査種類はisDefault=true）
+        let defaultTestTypeSettings = testTypes.map { TestTypeSetting(name: $0, isEnabled: true, isDefault: true) }
         self.testTypeSettingsData = try? JSONEncoder().encode(defaultTestTypeSettings)
         
         // デフォルトの病院設定（すべて有効）
@@ -165,7 +216,7 @@ final class AppSettings {
         get {
             guard let data = testTypeSettingsData else {
                 // データがない場合、現在の検査種類から初期設定を作成
-                let initialSettings = testTypes.map { TestTypeSetting(name: $0, isEnabled: true) }
+                let initialSettings = testTypes.map { TestTypeSetting(name: $0, isEnabled: true, isDefault: AppSettings.defaultTestTypes.contains($0)) }
                 testTypeSettingsData = try? JSONEncoder().encode(initialSettings)
                 return initialSettings
             }
@@ -174,9 +225,25 @@ final class AppSettings {
             
             // 設定が空の場合、現在の検査種類から初期設定を作成
             if settings.isEmpty {
-                let initialSettings = testTypes.map { TestTypeSetting(name: $0, isEnabled: true) }
+                let initialSettings = testTypes.map { TestTypeSetting(name: $0, isEnabled: true, isDefault: AppSettings.defaultTestTypes.contains($0)) }
                 testTypeSettingsData = try? JSONEncoder().encode(initialSettings)
                 return initialSettings
+            }
+            
+            // マイグレーション: 既存データでisDefaultがない場合はデフォルト検査種類かどうかで設定
+            let migratedSettings = settings.map { setting in
+                var newSetting = setting
+                // デフォルト検査種類の場合はisDefault=trueに設定
+                if AppSettings.defaultTestTypes.contains(setting.name) {
+                    newSetting.isDefault = true
+                }
+                return newSetting
+            }
+            
+            // マイグレーションした結果を保存
+            if settings != migratedSettings {
+                testTypeSettingsData = try? JSONEncoder().encode(migratedSettings)
+                return migratedSettings
             }
             
             return settings
@@ -219,6 +286,24 @@ final class AppSettings {
     // 有効な病院のみを取得
     var enabledHospitals: [String] {
         return hospitalSettings.filter { $0.isEnabled }.map { $0.name }
+    }
+    
+    // デフォルト検査種類を取得
+    static var defaultTestTypes: [String] {
+        return [
+            "ABR（聴性脳幹反応）",
+            "OAE（耳音響放射）", 
+            "ASSR（聴性定常反応）",
+            "インピーダンスオージオメトリー",
+            "BOA（行動観察聴力検査）",
+            "COR（条件詮索反応聴力検査）",
+            "VRA（視覚強化聴力検査）",
+            "ピュアトーン聴力検査",
+            "語音聴力検査",
+            "MLR（聴性中間反応）",
+            "CAEP（皮質聴性誘発反応）",
+            "REM（実耳測定）"
+        ]
     }
 }
 
@@ -299,8 +384,9 @@ final class Appointment {
     var isCompleted: Bool
     var reminderEnabled: Bool
     var reminderTime: Date?
+    var child: Child?
     
-    init(hospital: String, appointmentDate: Date, appointmentTime: Date, purpose: String, notes: String = "", reminderEnabled: Bool = true) {
+    init(hospital: String, appointmentDate: Date, appointmentTime: Date, purpose: String, notes: String = "", reminderEnabled: Bool = true, child: Child? = nil) {
         self.id = UUID()
         self.hospital = hospital
         self.appointmentDate = appointmentDate
@@ -309,6 +395,7 @@ final class Appointment {
         self.notes = notes
         self.isCompleted = false
         self.reminderEnabled = reminderEnabled
+        self.child = child
         
         // デフォルトで1時間前にリマインダー設定
         if reminderEnabled {

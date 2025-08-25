@@ -20,7 +20,7 @@ struct AppointmentListView: View {
                 Section(header: Text("今後の予定")) {
                     if upcomingAppointments.isEmpty {
                         Text("今後の予定はありません")
-                            .foregroundColor(.gray)
+                            .foregroundColor(.secondary)
                             .italic()
                     } else {
                         ForEach(upcomingAppointments) { appointment in
@@ -45,7 +45,6 @@ struct AppointmentListView: View {
                     }
                 }
             }
-            .background(Color(red: 1.0, green: 0.97, blue: 0.92))
             .navigationTitle("通院予定")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
@@ -234,25 +233,25 @@ struct AppointmentRowView: View {
                 HStack {
                     Text(dateFormatter.string(from: appointment.appointmentDate))
                         .font(.headline)
-                        .foregroundColor(isCompleted ? .gray : .black)
+                        .foregroundColor(isCompleted ? .secondary : .primary)
                     
                     Text(timeFormatter.string(from: appointment.appointmentTime))
                         .font(.subheadline)
-                        .foregroundColor(isCompleted ? .gray : .orange)
+                        .foregroundColor(isCompleted ? .secondary : .orange)
                 }
                 
                 Text(appointment.hospital)
                     .font(.subheadline)
-                    .foregroundColor(.gray)
+                    .foregroundColor(.secondary)
                 
                 Text(appointment.purpose)
                     .font(.body)
-                    .foregroundColor(isCompleted ? .gray : .black)
+                    .foregroundColor(isCompleted ? .secondary : .primary)
                 
                 if !appointment.notes.isEmpty {
                     Text(appointment.notes)
                         .font(.caption)
-                        .foregroundColor(.gray)
+                        .foregroundColor(.secondary)
                         .lineLimit(2)
                 }
                 

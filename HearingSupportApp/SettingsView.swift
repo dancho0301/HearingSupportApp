@@ -11,6 +11,7 @@ import SwiftData
 struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Query(sort: \Child.createdAt) private var children: [Child]
     let settings: AppSettings
     
     var body: some View {
@@ -29,6 +30,12 @@ struct SettingsView: View {
                         Spacer()
                         Text("おみみ手帳")
                             .foregroundColor(.gray)
+                    }
+                }
+                
+                Section(header: Text("こども管理")) {
+                    NavigationLink("こども一覧・編集") {
+                        ChildManagementView()
                     }
                 }
                 
@@ -200,27 +207,58 @@ struct TestTypeManagementView: View {
     @State private var testTypeSettings: [TestTypeSetting] = []
     @State private var newTestType = ""
     @State private var showingAddAlert = false
+    @State private var showingResetAlert = false
     @State private var editMode: EditMode = .inactive
     
     var body: some View {
         List {
             Section(header: Text("検査種類の表示設定")) {
-                ForEach($testTypeSettings) { $setting in
+                // デフォルト検査種類（削除不可）
+                ForEach(testTypeSettings.filter { $0.isDefault }, id: \.id) { setting in
                     HStack {
-                        Toggle(setting.name, isOn: $setting.isEnabled)
-                            .onChange(of: setting.isEnabled) { _, newValue in
-                                // 最低1つは有効にする制約
-                                let enabledCount = testTypeSettings.filter { $0.isEnabled }.count
-                                if enabledCount == 0 && !newValue {
-                                    setting.isEnabled = true
-                                    return
+                        Toggle(setting.name, isOn: Binding(
+                            get: { setting.isEnabled },
+                            set: { newValue in
+                                if let index = testTypeSettings.firstIndex(where: { $0.id == setting.id }) {
+                                    testTypeSettings[index].isEnabled = newValue
+                                    // 最低1つは有効にする制約
+                                    let enabledCount = testTypeSettings.filter { $0.isEnabled }.count
+                                    if enabledCount == 0 && !newValue {
+                                        testTypeSettings[index].isEnabled = true
+                                        return
+                                    }
+                                    saveSettings()
                                 }
-                                saveSettings()
                             }
+                        ))
+                        
+                        Image(systemName: "star.fill")
+                            .foregroundColor(.orange)
+                            .font(.caption)
                     }
                 }
-                .onDelete(perform: deleteTestType)
-                .onMove(perform: moveTestType)
+                
+                // カスタム検査種類（削除可能）
+                ForEach(testTypeSettings.filter { !$0.isDefault }, id: \.id) { setting in
+                    HStack {
+                        Toggle(setting.name, isOn: Binding(
+                            get: { setting.isEnabled },
+                            set: { newValue in
+                                if let index = testTypeSettings.firstIndex(where: { $0.id == setting.id }) {
+                                    testTypeSettings[index].isEnabled = newValue
+                                    // 最低1つは有効にする制約
+                                    let enabledCount = testTypeSettings.filter { $0.isEnabled }.count
+                                    if enabledCount == 0 && !newValue {
+                                        testTypeSettings[index].isEnabled = true
+                                        return
+                                    }
+                                    saveSettings()
+                                }
+                            }
+                        ))
+                    }
+                }
+                .onDelete(perform: deleteCustomTestType)
                 
                 // 新規追加ボタン
                 if editMode == .inactive {
@@ -232,6 +270,21 @@ struct TestTypeManagementView: View {
                                 .foregroundColor(.blue)
                             Text("新しい検査種類を追加")
                                 .foregroundColor(.blue)
+                            Spacer()
+                        }
+                        .padding(.vertical, 8)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    
+                    // 初期化ボタン
+                    Button(action: {
+                        showingResetAlert = true
+                    }) {
+                        HStack {
+                            Image(systemName: "arrow.clockwise.circle.fill")
+                                .foregroundColor(.orange)
+                            Text("初期設定に戻す")
+                                .foregroundColor(.orange)
                             Spacer()
                         }
                         .padding(.vertical, 8)
@@ -260,8 +313,8 @@ struct TestTypeManagementView: View {
                     // 検査種類リストに追加
                     settings.testTypes.append(newTestType)
                     
-                    // 設定にも追加（デフォルトで有効）
-                    testTypeSettings.append(TestTypeSetting(name: newTestType, isEnabled: true))
+                    // 設定にも追加（デフォルトで有効、カスタム検査種類）
+                    testTypeSettings.append(TestTypeSetting(name: newTestType, isEnabled: true, isDefault: false))
                     
                     saveSettings()
                     newTestType = ""
@@ -270,6 +323,14 @@ struct TestTypeManagementView: View {
             Button("キャンセル", role: .cancel) {
                 newTestType = ""
             }
+        }
+        .alert("検査種類を初期設定に戻す", isPresented: $showingResetAlert) {
+            Button("初期化", role: .destructive) {
+                resetToDefaultTestTypes()
+            }
+            Button("キャンセル", role: .cancel) { }
+        } message: {
+            Text("検査種類リストが初期設定に戻ります。追加した検査種類は削除されます。この操作は取り消せません。")
         }
         .onAppear {
             loadSettings()
@@ -282,7 +343,7 @@ struct TestTypeManagementView: View {
         // 既存の検査種類で設定がないものは有効として追加
         let existingNames = Set(testTypeSettings.map { $0.name })
         let newSettings = settings.testTypes.filter { !existingNames.contains($0) }
-            .map { TestTypeSetting(name: $0, isEnabled: true) }
+            .map { TestTypeSetting(name: $0, isEnabled: true, isDefault: AppSettings.defaultTestTypes.contains($0)) }
         
         testTypeSettings.append(contentsOf: newSettings)
         
@@ -297,36 +358,230 @@ struct TestTypeManagementView: View {
         try? modelContext.save()
     }
     
-    private func deleteTestType(at offsets: IndexSet) {
-        // 削除する前に有効な検査種類が最低1つ残るかチェック
-        let indicesToDelete = Set(offsets)
-        let remainingSettings = testTypeSettings.enumerated().compactMap { index, setting in
-            indicesToDelete.contains(index) ? nil : setting
-        }
+    private func deleteCustomTestType(at offsets: IndexSet) {
+        // カスタム検査種類のみを対象とする
+        let customSettings = testTypeSettings.filter { !$0.isDefault }
+        let settingsToDelete = offsets.map { customSettings[$0] }
         
-        let remainingEnabledCount = remainingSettings.filter { $0.isEnabled }.count
+        // 削除する前に有効な検査種類が最低1つ残るかチェック
+        let remainingEnabledCount = testTypeSettings.filter { setting in
+            !settingsToDelete.contains { $0.id == setting.id } && setting.isEnabled
+        }.count
+        
         if remainingEnabledCount == 0 {
             // 有効な検査種類がなくなる場合は削除を防ぐ
             return
         }
         
         // 検査種類リストから削除
-        let namesToDelete = offsets.map { testTypeSettings[$0].name }
+        let namesToDelete = settingsToDelete.map { $0.name }
         settings.testTypes.removeAll { name in namesToDelete.contains(name) }
         
         // 設定からも削除
-        testTypeSettings.remove(atOffsets: offsets)
+        testTypeSettings.removeAll { setting in
+            settingsToDelete.contains { $0.id == setting.id }
+        }
         
         saveSettings()
     }
     
-    private func moveTestType(from source: IndexSet, to destination: Int) {
-        // 設定の順序を変更
-        testTypeSettings.move(fromOffsets: source, toOffset: destination)
+    
+    
+    private func resetToDefaultTestTypes() {
+        // デフォルトの検査種類に戻す
+        let defaultTypes = AppSettings.defaultTestTypes
+        settings.testTypes = defaultTypes
         
-        // testTypesリストも同じ順序で更新
-        settings.testTypes = testTypeSettings.map { $0.name }
+        // 設定もデフォルトに戻す（全て有効、デフォルト検査種類）
+        testTypeSettings = defaultTypes.map { TestTypeSetting(name: $0, isEnabled: true, isDefault: true) }
         
         saveSettings()
+    }
+}
+
+struct ChildManagementView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \Child.createdAt) private var children: [Child]
+    @State private var editMode: EditMode = .inactive
+    @State private var showingAddChild = false
+    @State private var childToDelete: Child? = nil
+    @State private var showingDeleteAlert = false
+    
+    var body: some View {
+        List {
+            Section(header: Text("登録されたこども")) {
+                ForEach(children) { child in
+                    NavigationLink(destination: EditChildView(child: child)) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text(child.name)
+                                    .font(.headline)
+                                
+                                Spacer()
+                                
+                                if !child.isActive {
+                                    Text("非表示")
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 2)
+                                        .background(Color.gray.opacity(0.2))
+                                        .cornerRadius(4)
+                                }
+                            }
+                            
+                            if let birthDate = child.dateOfBirth {
+                                Text("生年月日: \(birthDate, formatter: dateFormatter)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            if !child.notes.isEmpty {
+                                Text(child.notes)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(2)
+                            }
+                            
+                            Text("記録数: \(child.records.count)件")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+                .onDelete(perform: requestDeleteChild)
+            }
+        }
+        .background(Color(red: 1.0, green: 0.97, blue: 0.92))
+        .navigationTitle("こども管理")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("追加") {
+                    showingAddChild = true
+                }
+            }
+        }
+        .sheet(isPresented: $showingAddChild) {
+            NavigationView {
+                AddChildView()
+            }
+        }
+        .alert("こども情報を削除", isPresented: $showingDeleteAlert) {
+            Button("削除", role: .destructive) {
+                if let child = childToDelete {
+                    modelContext.delete(child)
+                    try? modelContext.save()
+                    childToDelete = nil
+                }
+            }
+            Button("キャンセル", role: .cancel) {
+                childToDelete = nil
+            }
+        } message: {
+            if let child = childToDelete {
+                Text("「\(child.name)」の情報と関連する全ての記録・予定が削除されます。この操作は取り消せません。")
+            }
+        }
+    }
+    
+    private var dateFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ja_JP")
+        formatter.dateFormat = "yyyy/MM/dd"
+        return formatter
+    }
+    
+    private func requestDeleteChild(at offsets: IndexSet) {
+        // 削除確認のため最初の子供を選択
+        if let firstOffset = offsets.first {
+            childToDelete = children[firstOffset]
+            showingDeleteAlert = true
+        }
+    }
+}
+
+struct EditChildView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+    let child: Child
+    
+    @State private var name: String
+    @State private var birthDate: Date
+    @State private var hasBirthDate: Bool
+    @State private var notes: String
+    @State private var isActive: Bool
+    
+    init(child: Child) {
+        self.child = child
+        self._name = State(initialValue: child.name)
+        self._birthDate = State(initialValue: child.dateOfBirth ?? Date())
+        self._hasBirthDate = State(initialValue: child.dateOfBirth != nil)
+        self._notes = State(initialValue: child.notes)
+        self._isActive = State(initialValue: child.isActive)
+    }
+    
+    var body: some View {
+        Form {
+            Section(header: Text("基本情報")) {
+                TextField("名前", text: $name)
+                
+                Toggle("生年月日を設定する", isOn: $hasBirthDate)
+                
+                if hasBirthDate {
+                    DatePicker(
+                        "生年月日",
+                        selection: $birthDate,
+                        displayedComponents: .date
+                    )
+                    .environment(\.locale, Locale(identifier: "ja_JP"))
+                }
+                
+                Toggle("表示する", isOn: $isActive)
+            }
+            
+            Section(header: Text("メモ")) {
+                TextField("メモ", text: $notes, axis: .vertical)
+                    .lineLimit(3...6)
+            }
+            
+            Section(header: Text("統計")) {
+                HStack {
+                    Text("記録数")
+                    Spacer()
+                    Text("\(child.records.count)件")
+                        .foregroundColor(.gray)
+                }
+                
+                HStack {
+                    Text("予定数")
+                    Spacer()
+                    Text("\(child.appointments.count)件")
+                        .foregroundColor(.gray)
+                }
+            }
+        }
+        .background(Color(red: 1.0, green: 0.97, blue: 0.92))
+        .navigationTitle("こども編集")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("保存") {
+                    saveChild()
+                }
+                .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+    }
+    
+    private func saveChild() {
+        child.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        child.dateOfBirth = hasBirthDate ? birthDate : nil
+        child.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        child.isActive = isActive
+        
+        try? modelContext.save()
+        dismiss()
     }
 }
