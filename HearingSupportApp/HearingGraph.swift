@@ -188,7 +188,13 @@ struct TestResultsTable: View {
                             // データ値
                             if let graphData = result.graphData {
                                 ForEach(0..<freqs.count, id: \.self) { index in
-                                    Text(index < graphData.count && graphData[index] != nil ? "\(graphData[index]!)" : "-")
+                                    Text({
+                                        if let optionalValue = graphData[safe: index], let value = optionalValue {
+                                            return "\(value)"
+                                        } else {
+                                            return "-"
+                                        }
+                                    }())
                                         .font(.caption)
                                         .foregroundColor(.black)
                                         .frame(minWidth: 40, alignment: .center)
