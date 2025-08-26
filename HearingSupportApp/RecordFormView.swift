@@ -15,6 +15,7 @@ struct RecordFormView: View {
     @State var selectedTestIndex: Int
     @State var detail: String
     @State var results: [TestResultInput]
+    @State private var showDeleteAlert = false
 
     let settings: AppSettings
     var isEditing: Bool
@@ -98,8 +99,7 @@ struct RecordFormView: View {
             Section {
                 if isEditing, let onDelete = onDelete {
                     Button("削除", role: .destructive) {
-                        onDelete()
-                        presentationMode.wrappedValue.dismiss()
+                        showDeleteAlert = true
                     }
                 }
             }
@@ -132,6 +132,15 @@ struct RecordFormView: View {
                 }
                 .foregroundColor(.blue)
             }
+        }
+        .alert("記録を削除", isPresented: $showDeleteAlert) {
+            Button("キャンセル", role: .cancel) { }
+            Button("削除", role: .destructive) {
+                onDelete?()
+                presentationMode.wrappedValue.dismiss()
+            }
+        } message: {
+            Text("この記録を削除しますか？この操作は取り消せません。")
         }
     }
 }
