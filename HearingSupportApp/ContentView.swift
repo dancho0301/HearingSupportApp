@@ -16,6 +16,8 @@ struct ContentView: View {
     @State private var showChildSelection = false
     @State private var showInitialSetup = false
     @State private var selectedChild: Child? = nil
+    @State private var records: [Record] = []
+    @State private var appointments: [Appointment] = []
     
     private var settings: AppSettings {
         if let firstSettings = appSettings.first {
@@ -27,21 +29,21 @@ struct ContentView: View {
         }
     }
     
-    // 現在選択中のこどもの記録のみを取得
-    private var records: [Record] {
-        guard let selectedChild = selectedChild else { return [] }
-        return allRecords.filter { $0.child?.id == selectedChild.id }
-    }
-    
-    // 現在選択中のこどもの予定のみを取得
-    private var appointments: [Appointment] {
-        guard let selectedChild = selectedChild else { return [] }
-        return allAppointments.filter { $0.child?.id == selectedChild.id }
-    }
-    
     // アクティブなこどもを取得
     private var activeChildren: [Child] {
         return children.filter { $0.isActive }
+    }
+    
+    // 選択中のこどもに基づいてデータを更新
+    private func updateChildData() {
+        guard let selectedChild = selectedChild else {
+            records = []
+            appointments = []
+            return
+        }
+        
+        records = allRecords.filter { $0.child?.id == selectedChild.id }
+        appointments = allAppointments.filter { $0.child?.id == selectedChild.id }
     }
 
     var body: some View {
@@ -223,6 +225,15 @@ struct ContentView: View {
                     }
                 }
             }
+            .onChange(of: selectedChild) {
+                updateChildData()
+            }
+            .onChange(of: allRecords) {
+                updateChildData()
+            }
+            .onChange(of: allAppointments) {
+                updateChildData()
+            }
         }
     }
     
@@ -239,6 +250,9 @@ struct ContentView: View {
                 selectedChild = activeChildren.first
             }
         }
+        
+        // 初期データ更新
+        updateChildData()
     }
     
     private func migrateOrphanedRecords() {
