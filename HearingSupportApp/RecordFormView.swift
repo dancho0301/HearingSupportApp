@@ -94,19 +94,19 @@ struct RecordFormView: View {
                             .stroke(Color.gray.opacity(0.3), lineWidth: 1)
                     )
             }
-        }
-        .navigationTitle(isEditing ? "記録の編集" : "検査記録を追加")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if isEditing, let onDelete = onDelete {
-                ToolbarItem(placement: .navigationBarLeading) {
+            
+            Section {
+                if isEditing, let onDelete = onDelete {
                     Button("削除", role: .destructive) {
                         onDelete()
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
             }
-            
+        }
+        .navigationTitle(isEditing ? "記録の編集" : "検査記録を追加")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button("保存") {
                     let hospitalName: String
