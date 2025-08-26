@@ -94,37 +94,45 @@ struct RecordFormView: View {
                             .stroke(Color.gray.opacity(0.3), lineWidth: 1)
                     )
             }
-            Button("保存") {
-                let hospitalName: String
-                if selectedHospitalIndex == settings.enabledHospitals.count {
-                    hospitalName = newHospital
-                } else {
-                    hospitalName = settings.enabledHospitals[selectedHospitalIndex]
-                }
-                
-                let testResults = results.map { input in
-                    TestResult(
-                        ear: input.ear,
-                        condition: input.condition,
-                        thresholdsRight: input.ear == "右耳のみ" ? input.thresholdsRight : nil,
-                        thresholdsLeft: input.ear == "左耳のみ" ? input.thresholdsLeft : nil,
-                        thresholdsBoth: input.ear == "両耳" ? input.thresholdsBoth : nil,
-                        freqs: input.freqs
-                    )
-                }
-                
-                onSave(hospitalName, settings.enabledTestTypes[selectedTestIndex], date, detail, testResults)
-                presentationMode.wrappedValue.dismiss()
-            }
-            .foregroundColor(.blue)
-            if isEditing, let onDelete = onDelete {
-                Button("削除", role: .destructive) {
-                    onDelete()
-                    presentationMode.wrappedValue.dismiss()
-                }
-            }
         }
         .navigationTitle(isEditing ? "記録の編集" : "検査記録を追加")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if isEditing, let onDelete = onDelete {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("削除", role: .destructive) {
+                        onDelete()
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+            }
+            
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("保存") {
+                    let hospitalName: String
+                    if selectedHospitalIndex == settings.enabledHospitals.count {
+                        hospitalName = newHospital
+                    } else {
+                        hospitalName = settings.enabledHospitals[selectedHospitalIndex]
+                    }
+                    
+                    let testResults = results.map { input in
+                        TestResult(
+                            ear: input.ear,
+                            condition: input.condition,
+                            thresholdsRight: input.ear == "右耳のみ" ? input.thresholdsRight : nil,
+                            thresholdsLeft: input.ear == "左耳のみ" ? input.thresholdsLeft : nil,
+                            thresholdsBoth: input.ear == "両耳" ? input.thresholdsBoth : nil,
+                            freqs: input.freqs
+                        )
+                    }
+                    
+                    onSave(hospitalName, settings.enabledTestTypes[selectedTestIndex], date, detail, testResults)
+                    presentationMode.wrappedValue.dismiss()
+                }
+                .foregroundColor(.blue)
+            }
+        }
     }
 }
 
