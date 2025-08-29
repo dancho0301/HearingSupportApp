@@ -32,7 +32,7 @@ final class OCRIntegrationTests: XCTestCase {
         左耳 ×    20     25     30     35     40     45     50
         
         検査日: 2025年8月20日
-        病院: 千葉こども耳鼻科
+        病院: 千葉利用者耳鼻科
         """
         
         // OCR解析を実行
@@ -56,7 +56,7 @@ final class OCRIntegrationTests: XCTestCase {
         XCTAssertTrue(testInput.thresholdsLeft.contains { $0 != nil }, "左耳のデータが存在するべきです")
         
         // TestResultに変換
-        let testResult = testInput.toResult()
+        let testResult = try testInput.toResult()
         
         // 変換結果の検証
         XCTAssertEqual(testResult.ear, "両耳", "TestResultの耳設定が正しく変換されるべきです")
@@ -91,7 +91,7 @@ final class OCRIntegrationTests: XCTestCase {
         XCTAssertEqual(testInput.condition, "補聴器", "補聴器として認識されるべきです")
         XCTAssertEqual(testInput.ear, "右耳のみ", "右耳のみとして認識されるべきです")
         
-        let testResult = testInput.toResult()
+        let testResult = try testInput.toResult()
         XCTAssertEqual(testResult.condition, "補聴器", "TestResultに補聴器設定が正しく変換されるべきです")
         XCTAssertNotNil(testResult.thresholdsRight, "右耳のみの場合、右耳の閾値が設定されるべきです")
     }
@@ -118,7 +118,7 @@ final class OCRIntegrationTests: XCTestCase {
         XCTAssertEqual(testInput.condition, "人工内耳", "人工内耳として認識されるべきです")
         XCTAssertEqual(testInput.ear, "左耳のみ", "左耳のみとして認識されるべきです")
         
-        let testResult = testInput.toResult()
+        let testResult = try testInput.toResult()
         XCTAssertEqual(testResult.condition, "人工内耳", "TestResultに人工内耳設定が正しく変換されるべきです")
         XCTAssertNotNil(testResult.thresholdsLeft, "左耳のみの場合、左耳の閾値が設定されるべきです")
     }
@@ -147,7 +147,7 @@ final class OCRIntegrationTests: XCTestCase {
         // スケールアウトで120dBが設定されているか確認
         XCTAssertTrue(testInput.thresholdsRight.contains(120), "スケールアウトで120dBが設定されるべきです")
         
-        let testResult = testInput.toResult()
+        let testResult = try testInput.toResult()
         
         // TestResultでもスケールアウト値が保持されているか確認
         if let bothThresholds = testResult.thresholdsBoth {
@@ -219,7 +219,7 @@ final class OCRIntegrationTests: XCTestCase {
         XCTAssertTrue(testInput.thresholdsLeft.contains { $0 != nil }, "左耳のデータが存在するべきです")
         
         // TestResultに変換してデータ整合性を確認
-        let testResult = testInput.toResult()
+        let testResult = try testInput.toResult()
         
         XCTAssertEqual(testResult.ear, "両耳", "TestResultの耳設定が正しいべきです")
         XCTAssertNotNil(testResult.thresholdsBoth, "両耳の閾値データが設定されるべきです")
@@ -267,7 +267,7 @@ final class OCRIntegrationTests: XCTestCase {
         }
         
         // TestResultに変換後のデータ整合性確認
-        let testResult = testInput.toResult()
+        let testResult = try testInput.toResult()
         XCTAssertEqual(testResult.ear, testInput.ear, "耳設定がTestResultに正しく反映されるべきです")
         XCTAssertEqual(testResult.condition, testInput.condition, "条件設定がTestResultに正しく反映されるべきです")
     }
@@ -285,7 +285,7 @@ final class OCRIntegrationTests: XCTestCase {
             // OCRから最終的なTestResultまでの完全なフローを100回実行
             for _ in 0..<100 {
                 if let parsedInput = HearingTestParser.parseOCRText(sampleOcrText) {
-                    let _ = parsedInput.toResult()
+                    let _ = try? parsedInput.toResult()
                 }
             }
         }

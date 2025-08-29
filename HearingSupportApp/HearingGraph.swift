@@ -17,9 +17,9 @@ struct HearingGraph: View {
                 // Y軸ラベル（左側に縦配置）
                 GeometryReader { labelGeo in
                     ZStack {
-                        ForEach(0...6, id: \.self) { level in
-                            let dbValue = level * 20
-                            let y = labelGeo.size.height * CGFloat(level) / 6.0
+                        ForEach(0...12, id: \.self) { level in
+                            let dbValue = -10 + level * 10
+                            let y = labelGeo.size.height * CGFloat(level) / 12.0
                             Text("\(dbValue)dB")
                                 .font(.caption2)
                                 .foregroundColor(.gray)
@@ -27,14 +27,14 @@ struct HearingGraph: View {
                         }
                     }
                 }
-                .frame(width: 35, height: 120)
+                .frame(width: 35, height: 200)
                 
                 // グラフエリア
                 GeometryReader { geo in
                     ZStack {
-                        // Y軸のスケール線（0dB, 20dB, 40dB, 60dB, 80dB, 100dB, 120dB）
-                        ForEach(0...6, id: \.self) { level in
-                            let y = geo.size.height * CGFloat(level) / 6.0
+                        // Y軸のスケール線（-10dBから110dBまで10dB刻み）
+                        ForEach(0...12, id: \.self) { level in
+                            let y = geo.size.height * CGFloat(level) / 12.0
                             Path { path in
                                 path.move(to: CGPoint(x: 0, y: y))
                                 path.addLine(to: CGPoint(x: geo.size.width, y: y))
@@ -59,13 +59,14 @@ struct HearingGraph: View {
                                     freqs: result.freqs,
                                     values: graphData,
                                     color: result.displayColor,
-                                    geometrySize: geo.size
+                                    geometrySize: geo.size,
+                                    testResult: result
                                 )
                             }
                         }
                     }
                 }
-                .frame(height: 120)
+                .frame(height: 200)
                 .background(Color.white)
                 .cornerRadius(8)
                 .overlay(
@@ -106,13 +107,14 @@ struct SingleLineGraph: View {
     let values: [Int?]
     let color: Color
     let geometrySize: CGSize
+    let testResult: TestResult
     
     var body: some View {
         let points = values.enumerated()
             .compactMap { (i, v) -> CGPoint? in
                 guard let v = v else { return nil }
                 let x = geometrySize.width * CGFloat(i) / CGFloat(freqs.count - 1)
-                let y = geometrySize.height * CGFloat(v) / 120.0
+                let y = geometrySize.height * (CGFloat(v) + 10.0) / 120.0
                 return CGPoint(x: x, y: y)
             }
         
@@ -130,10 +132,46 @@ struct SingleLineGraph: View {
             
             // ポイント
             ForEach(0..<points.count, id: \.self) { i in
-                Circle()
-                    .fill(color)
-                    .frame(width: 6, height: 6)
-                    .position(points[safe: i] ?? .zero)
+                Group {
+                    switch (testResult.ear, testResult.condition) {
+                    case ("右耳のみ", "裸耳"):
+                        // 右耳 裸耳：○（赤）
+                        Circle()
+                            .stroke(Color.red, lineWidth: 2)
+                            .frame(width: 12, height: 12)
+                    case ("右耳のみ", "補聴器"):
+                        // 右耳 補聴器装用下：△（少し暗い赤）
+                        Triangle(direction: .up)
+                            .stroke(Color(red: 0.8, green: 0.2, blue: 0.2), lineWidth: 2)
+                            .frame(width: 16, height: 16)
+                    case ("左耳のみ", "裸耳"):
+                        // 左耳 裸耳：×（青）
+                        Cross()
+                            .stroke(Color.blue, lineWidth: 2)
+                            .frame(width: 12, height: 12)
+                    case ("左耳のみ", "補聴器"):
+                        // 左耳 補聴器装用下：▽（少し暗い青）
+                        Triangle(direction: .down)
+                            .stroke(Color(red: 0.2, green: 0.4, blue: 0.8), lineWidth: 2)
+                            .frame(width: 16, height: 16)
+                    case ("両耳", "裸耳"):
+                        // 両耳 裸耳：△（緑）
+                        Triangle(direction: .up)
+                            .stroke(Color.green, lineWidth: 2)
+                            .frame(width: 16, height: 16)
+                    case ("両耳", "補聴器"):
+                        // 両耳 補聴器装用下：▲（少し暗い緑）
+                        Triangle(direction: .up)
+                            .fill(Color(red: 0.2, green: 0.6, blue: 0.2))
+                            .frame(width: 16, height: 16)
+                    default:
+                        // その他：円
+                        Circle()
+                            .fill(Color.black)
+                            .frame(width: 8, height: 8)
+                    }
+                }
+                .position(points[safe: i] ?? .zero)
             }
         }
     }
@@ -153,8 +191,9 @@ struct TestResultsTable: View {
                             .font(.caption)
                             .fontWeight(.semibold)
                             .foregroundColor(.white)
-                            .frame(width: 70, alignment: .center)
+                            .frame(width: 90, alignment: .leading)
                             .padding(.vertical, 6)
+                            .padding(.horizontal, 4)
                             .background(Color(.systemGray2))
                         
                         ForEach(freqs, id: \.self) { freq in
@@ -181,8 +220,9 @@ struct TestResultsTable: View {
                                     .foregroundColor(.black)
                                     .lineLimit(1)
                             }
-                            .frame(width: 70, alignment: .center)
+                            .frame(width: 90, alignment: .leading)
                             .padding(.vertical, 4)
+                            .padding(.horizontal, 4)
                             .background(Color(.systemGray6).opacity(0.5))
                             
                             // データ値
@@ -190,7 +230,7 @@ struct TestResultsTable: View {
                                 ForEach(0..<freqs.count, id: \.self) { index in
                                     Text({
                                         if let optionalValue = graphData[safe: index], let value = optionalValue {
-                                            return "\(value)"
+                                            return "\(value)dB"
                                         } else {
                                             return "-"
                                         }
@@ -222,6 +262,58 @@ struct TestResultsTable: View {
                 .clipped()
             }
         }
+    }
+}
+
+// 三角形シェイプ（方向指定可能）
+struct Triangle: Shape {
+    enum Direction {
+        case up, down
+    }
+    
+    let direction: Direction
+    
+    init(direction: Direction = .up) {
+        self.direction = direction
+    }
+    
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        
+        switch direction {
+        case .up:
+            // 上向き三角形 ▲
+            path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+            path.addLine(to: CGPoint(x: rect.midX, y: rect.minY))
+        case .down:
+            // 下向き三角形 ▽
+            path.move(to: CGPoint(x: rect.midX, y: rect.maxY))
+            path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+        }
+        
+        path.closeSubpath()
+        return path
+    }
+}
+
+// ×シェイプ（クロス）
+struct Cross: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        
+        // 左上から右下への線
+        path.move(to: CGPoint(x: rect.minX + rect.width * 0.2, y: rect.minY + rect.height * 0.2))
+        path.addLine(to: CGPoint(x: rect.maxX - rect.width * 0.2, y: rect.maxY - rect.height * 0.2))
+        
+        // 右上から左下への線
+        path.move(to: CGPoint(x: rect.maxX - rect.width * 0.2, y: rect.minY + rect.height * 0.2))
+        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.2, y: rect.maxY - rect.height * 0.2))
+        
+        return path
     }
 }
 

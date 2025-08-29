@@ -18,11 +18,7 @@ struct AddRecordView: View {
     @State private var selectedTestIndex = 0
     @State private var detail: String = ""
 
-    @State private var hospitalList: [String] = [
-        "千葉こども耳鼻科",
-        "東京医大",
-        "柏総合病院"
-    ]
+    @State private var hospitalList: [String] = []
     let testTypes = [
         "ABR検査",
         "OAE検査",
@@ -91,15 +87,20 @@ struct AddRecordView: View {
                 } else {
                     hospitalName = hospitalList[selectedHospitalIndex]
                 }
-                let record = Record(
-                    date: date,
-                    hospital: hospitalName,
-                    title: testTypes[selectedTestIndex],
-                    detail: detail,
-                    results: results.map { $0.toResult() }
-                )
-                records.insert(record, at: 0)
-                dismiss()
+                do {
+                    let testResults = try results.map { try $0.toResult() }
+                    let record = try Record(
+                        date: date,
+                        hospital: hospitalName,
+                        title: testTypes[selectedTestIndex],
+                        detail: detail,
+                        results: testResults
+                    )
+                    records.insert(record, at: 0)
+                    dismiss()
+                } catch {
+                    print("レコード作成エラー: \(error.localizedDescription)")
+                }
             }
             .disabled((selectedHospitalIndex == hospitalList.count && newHospital.isEmpty))
         }

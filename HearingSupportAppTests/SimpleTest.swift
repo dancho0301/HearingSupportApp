@@ -15,9 +15,9 @@ final class SimpleTest: XCTestCase {
         XCTAssertEqual(2 + 2, 4, "基本的な計算が正しくありません")
     }
     
-    func testTestResultCreation() {
+    func testTestResultCreation() throws {
         // TestResultの作成テスト
-        let testResult = TestResult(
+        let testResult = try TestResult(
             ear: "右耳のみ",
             condition: "裸耳",
             thresholdsRight: [20, 25, 30, 35, 40, 45, 50],

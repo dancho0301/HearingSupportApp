@@ -33,8 +33,8 @@ struct SettingsView: View {
                     }
                 }
                 
-                Section(header: Text("こども管理")) {
-                    NavigationLink("こども一覧・編集") {
+                Section(header: Text("利用者管理")) {
+                    NavigationLink("利用者一覧・編集") {
                         ChildManagementView()
                     }
                 }
@@ -409,7 +409,7 @@ struct ChildManagementView: View {
     
     var body: some View {
         List {
-            Section(header: Text("登録されたこども")) {
+            Section(header: Text("登録された利用者")) {
                 ForEach(children) { child in
                     NavigationLink(destination: EditChildView(child: child)) {
                         VStack(alignment: .leading, spacing: 4) {
@@ -430,11 +430,6 @@ struct ChildManagementView: View {
                                 }
                             }
                             
-                            if let birthDate = child.dateOfBirth {
-                                Text("生年月日: \(birthDate, formatter: dateFormatter)")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
                             
                             if !child.notes.isEmpty {
                                 Text(child.notes)
@@ -454,7 +449,7 @@ struct ChildManagementView: View {
             }
         }
         .background(Color(red: 1.0, green: 0.97, blue: 0.92))
-        .navigationTitle("こども管理")
+        .navigationTitle("利用者管理")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -468,7 +463,7 @@ struct ChildManagementView: View {
                 AddChildView()
             }
         }
-        .alert("こども情報を削除", isPresented: $showingDeleteAlert) {
+        .alert("利用者情報を削除", isPresented: $showingDeleteAlert) {
             Button("削除", role: .destructive) {
                 if let child = childToDelete {
                     modelContext.delete(child)
@@ -516,8 +511,8 @@ struct EditChildView: View {
     init(child: Child) {
         self.child = child
         self._name = State(initialValue: child.name)
-        self._birthDate = State(initialValue: child.dateOfBirth ?? Date())
-        self._hasBirthDate = State(initialValue: child.dateOfBirth != nil)
+        self._birthDate = State(initialValue: Date())
+        self._hasBirthDate = State(initialValue: false)
         self._notes = State(initialValue: child.notes)
         self._isActive = State(initialValue: child.isActive)
     }
@@ -527,16 +522,6 @@ struct EditChildView: View {
             Section(header: Text("基本情報")) {
                 TextField("名前", text: $name)
                 
-                Toggle("生年月日を設定する", isOn: $hasBirthDate)
-                
-                if hasBirthDate {
-                    DatePicker(
-                        "生年月日",
-                        selection: $birthDate,
-                        displayedComponents: .date
-                    )
-                    .environment(\.locale, Locale(identifier: "ja_JP"))
-                }
                 
                 Toggle("表示する", isOn: $isActive)
             }
@@ -563,7 +548,7 @@ struct EditChildView: View {
             }
         }
         .background(Color(red: 1.0, green: 0.97, blue: 0.92))
-        .navigationTitle("こども編集")
+        .navigationTitle("利用者編集")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -577,7 +562,6 @@ struct EditChildView: View {
     
     private func saveChild() {
         child.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        child.dateOfBirth = hasBirthDate ? birthDate : nil
         child.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         child.isActive = isActive
         

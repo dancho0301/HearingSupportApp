@@ -13,7 +13,7 @@ struct AppointmentFormView: View {
     @Query private var appSettings: [AppSettings]
     
     let appointment: Appointment?
-    let onSave: (String, Date, Date, String, String, Bool) -> Void
+    let onSave: (String, Date, Date, String, String) -> Void
     let onDelete: (() -> Void)?
     let onCancel: () -> Void
     
@@ -21,9 +21,19 @@ struct AppointmentFormView: View {
     @State private var newHospital: String = ""
     @State private var appointmentDate: Date = Date()
     @State private var appointmentTime: Date = Date()
-    @State private var purpose: String = ""
+    @State private var purpose: String = "定期検査"
     @State private var notes: String = ""
-    @State private var reminderEnabled: Bool = true
+    @State private var showExitAlert = false
+    @State private var showValidationAlert = false
+    @State private var validationMessage = ""
+    
+    // 初期値を保持するプロパティ
+    private let initialHospitalIndex: Int
+    private let initialNewHospital: String
+    private let initialAppointmentDate: Date
+    private let initialAppointmentTime: Date
+    private let initialPurpose: String
+    private let initialNotes: String
     
     private var settings: AppSettings? {
         appSettings.first
@@ -38,19 +48,57 @@ struct AppointmentFormView: View {
         "その他"
     ]
     
-    init(appointment: Appointment?, onSave: @escaping (String, Date, Date, String, String, Bool) -> Void, onDelete: (() -> Void)? = nil, onCancel: @escaping () -> Void) {
+    init(appointment: Appointment?, onSave: @escaping (String, Date, Date, String, String) -> Void, onDelete: (() -> Void)? = nil, onCancel: @escaping () -> Void) {
         self.appointment = appointment
         self.onSave = onSave
         self.onDelete = onDelete
         self.onCancel = onCancel
         
         if let appointment = appointment {
-            _appointmentDate = State(initialValue: appointment.appointmentDate)
-            _appointmentTime = State(initialValue: appointment.appointmentTime)
-            _purpose = State(initialValue: appointment.purpose)
-            _notes = State(initialValue: appointment.notes)
-            _reminderEnabled = State(initialValue: appointment.reminderEnabled)
+            let dateValue = appointment.appointmentDate
+            let timeValue = appointment.appointmentTime
+            let purposeValue = appointment.purpose
+            let notesValue = appointment.notes
+            
+            _appointmentDate = State(initialValue: dateValue)
+            _appointmentTime = State(initialValue: timeValue)
+            _purpose = State(initialValue: purposeValue)
+            _notes = State(initialValue: notesValue)
+            
+            self.initialAppointmentDate = dateValue
+            self.initialAppointmentTime = timeValue
+            self.initialPurpose = purposeValue
+            self.initialNotes = notesValue
+            self.initialHospitalIndex = 0
+            self.initialNewHospital = ""
+        } else {
+            let dateValue = Date()
+            let timeValue = Date()
+            let purposeValue = "定期検査"
+            let notesValue = ""
+            
+            _appointmentDate = State(initialValue: dateValue)
+            _appointmentTime = State(initialValue: timeValue)
+            _purpose = State(initialValue: purposeValue)
+            _notes = State(initialValue: notesValue)
+            
+            self.initialAppointmentDate = dateValue
+            self.initialAppointmentTime = timeValue
+            self.initialPurpose = purposeValue
+            self.initialNotes = notesValue
+            self.initialHospitalIndex = 0
+            self.initialNewHospital = ""
         }
+    }
+    
+    // 変更があったかどうかをチェックする関数
+    private var hasChanges: Bool {
+        return selectedHospitalIndex != initialHospitalIndex ||
+               newHospital != initialNewHospital ||
+               appointmentDate != initialAppointmentDate ||
+               appointmentTime != initialAppointmentTime ||
+               purpose != initialPurpose ||
+               notes != initialNotes
     }
     
     var body: some View {
@@ -87,8 +135,8 @@ struct AppointmentFormView: View {
                 
                 Section(header: Text("内容")) {
                     Picker("目的", selection: $purpose) {
-                        ForEach(purposeOptions, id: \.self) { purpose in
-                            Text(purpose)
+                        ForEach(purposeOptions, id: \.self) { purposeOption in
+                            Text(purposeOption).tag(purposeOption)
                         }
                     }
                     
@@ -96,15 +144,6 @@ struct AppointmentFormView: View {
                         .lineLimit(3...6)
                 }
                 
-                Section(header: Text("リマインダー")) {
-                    Toggle("リマインダーを有効にする", isOn: $reminderEnabled)
-                    
-                    if reminderEnabled {
-                        Text("予約時間の1時間前に通知します")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                    }
-                }
                 
                 Section {
                     Button("保存") {
@@ -121,7 +160,20 @@ struct AppointmentFormView: View {
                             hospitalName = newHospital
                         }
                         
-                        onSave(hospitalName, appointmentDate, appointmentTime, purpose, notes, reminderEnabled)
+                        // バリデーション
+                        if hospitalName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            validationMessage = "病院名を入力してください"
+                            showValidationAlert = true
+                            return
+                        }
+                        
+                        if purpose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            validationMessage = "予約目的を入力してください"
+                            showValidationAlert = true
+                            return
+                        }
+                        
+                        onSave(hospitalName, appointmentDate, appointmentTime, purpose, notes)
                     }
                     .disabled(purpose.isEmpty || (selectedHospitalIndex == (settings?.hospitalList.count ?? 0) && newHospital.isEmpty))
                     
@@ -135,17 +187,18 @@ struct AppointmentFormView: View {
             }
             .navigationTitle(appointment == nil ? "予定の追加" : "予定の編集")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: {
-                        print("🔥 AppointmentFormView: キャンセルボタンがタップされました")
-                        onCancel()
-                        print("🔥 AppointmentFormView: onCancel()実行完了")
-                    }) {
-                        Text("キャンセル")
-                            .foregroundColor(.blue)
-                    }
+            .alert("変更を破棄", isPresented: $showExitAlert) {
+                Button("キャンセル", role: .cancel) { }
+                Button("破棄", role: .destructive) {
+                    onCancel()
                 }
+            } message: {
+                Text("変更された内容が保存されていません。変更を破棄して戻りますか？")
+            }
+            .alert("入力エラー", isPresented: $showValidationAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(validationMessage)
             }
         }
         .onAppear {

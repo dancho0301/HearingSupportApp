@@ -16,6 +16,17 @@ struct RecordFormView: View {
     @State var detail: String
     @State var results: [TestResultInput]
     @State private var showDeleteAlert = false
+    @State private var showExitAlert = false
+    @State private var showValidationAlert = false
+    @State private var validationMessage = ""
+    
+    // 初期値を保持するプロパティ
+    private let initialDate: Date
+    private let initialHospitalIndex: Int
+    private let initialNewHospital: String
+    private let initialTestIndex: Int
+    private let initialDetail: String
+    private let initialResults: [TestResultInput]
 
     let settings: AppSettings
     var isEditing: Bool
@@ -30,25 +41,72 @@ struct RecordFormView: View {
         onSave: @escaping (String, String, Date, String, [TestResult]) -> Void,
         onDelete: (() -> Void)? = nil
     ) {
-        _date = State(initialValue: record?.date ?? Date())
+        let dateValue = record?.date ?? Date()
+        _date = State(initialValue: dateValue)
+        self.initialDate = dateValue
+        
         self.settings = settings
+        
+        let hospitalIndex: Int
+        let newHospitalValue: String
         if let rec = record, let idx = settings.enabledHospitals.firstIndex(of: rec.hospital) {
-            _selectedHospitalIndex = State(initialValue: idx)
-            _newHospital = State(initialValue: "")
+            hospitalIndex = idx
+            newHospitalValue = ""
         } else {
-            _selectedHospitalIndex = State(initialValue: settings.enabledHospitals.count)
-            _newHospital = State(initialValue: record?.hospital ?? "")
+            hospitalIndex = settings.enabledHospitals.count
+            newHospitalValue = record?.hospital ?? ""
         }
+        _selectedHospitalIndex = State(initialValue: hospitalIndex)
+        _newHospital = State(initialValue: newHospitalValue)
+        self.initialHospitalIndex = hospitalIndex
+        self.initialNewHospital = newHospitalValue
+        
+        let testIndex: Int
         if let rec = record, let tIdx = settings.enabledTestTypes.firstIndex(of: rec.title) {
-            _selectedTestIndex = State(initialValue: tIdx)
+            testIndex = tIdx
         } else {
-            _selectedTestIndex = State(initialValue: 0)
+            testIndex = 0
         }
-        _detail = State(initialValue: record?.detail ?? "")
-        _results = State(initialValue: record?.results.map { $0.toInput() } ?? [TestResultInput()])
+        _selectedTestIndex = State(initialValue: testIndex)
+        self.initialTestIndex = testIndex
+        
+        let detailValue = record?.detail ?? ""
+        _detail = State(initialValue: detailValue)
+        self.initialDetail = detailValue
+        
+        let resultsValue = record?.results.map { $0.toInput() } ?? [TestResultInput()]
+        _results = State(initialValue: resultsValue)
+        self.initialResults = resultsValue
+        
         self.isEditing = isEditing
         self.onSave = onSave
         self.onDelete = onDelete
+    }
+    
+    // 変更があったかどうかをチェックする関数
+    private var hasChanges: Bool {
+        return date != initialDate ||
+               selectedHospitalIndex != initialHospitalIndex ||
+               newHospital != initialNewHospital ||
+               selectedTestIndex != initialTestIndex ||
+               detail != initialDetail ||
+               !areResultsEqual(results, initialResults)
+    }
+    
+    // TestResultInputの配列を比較する関数
+    private func areResultsEqual(_ lhs: [TestResultInput], _ rhs: [TestResultInput]) -> Bool {
+        guard lhs.count == rhs.count else { return false }
+        for (index, leftResult) in lhs.enumerated() {
+            let rightResult = rhs[index]
+            if leftResult.ear != rightResult.ear ||
+               leftResult.condition != rightResult.condition ||
+               leftResult.thresholdsRight != rightResult.thresholdsRight ||
+               leftResult.thresholdsLeft != rightResult.thresholdsLeft ||
+               leftResult.thresholdsBoth != rightResult.thresholdsBoth {
+                return false
+            }
+        }
+        return true
     }
 
     var body: some View {
@@ -97,7 +155,7 @@ struct RecordFormView: View {
             }
             
             Section {
-                if isEditing, let onDelete = onDelete {
+                if isEditing, let _ = onDelete {
                     Button("削除", role: .destructive) {
                         showDeleteAlert = true
                     }
@@ -116,22 +174,41 @@ struct RecordFormView: View {
                         hospitalName = settings.enabledHospitals[selectedHospitalIndex]
                     }
                     
-                    let testResults = results.map { input in
-                        TestResult(
-                            ear: input.ear,
-                            condition: input.condition,
-                            thresholdsRight: input.ear == "右耳のみ" ? input.thresholdsRight : nil,
-                            thresholdsLeft: input.ear == "左耳のみ" ? input.thresholdsLeft : nil,
-                            thresholdsBoth: input.ear == "両耳" ? input.thresholdsBoth : nil,
-                            freqs: input.freqs
-                        )
+                    // バリデーション
+                    if hospitalName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        validationMessage = "病院名を入力してください"
+                        showValidationAlert = true
+                        return
                     }
                     
-                    onSave(hospitalName, settings.enabledTestTypes[selectedTestIndex], date, detail, testResults)
-                    presentationMode.wrappedValue.dismiss()
+                    if selectedTestIndex >= settings.enabledTestTypes.count {
+                        validationMessage = "検査種類を選択してください"
+                        showValidationAlert = true
+                        return
+                    }
+                    
+                    do {
+                        let testResults = try results.map { input in
+                            try input.toResult()
+                        }
+                        
+                        onSave(hospitalName, settings.enabledTestTypes[selectedTestIndex], date, detail, testResults)
+                        presentationMode.wrappedValue.dismiss()
+                    } catch {
+                        validationMessage = error.localizedDescription
+                        showValidationAlert = true
+                    }
                 }
                 .foregroundColor(.blue)
             }
+        }
+        .alert("変更を破棄", isPresented: $showExitAlert) {
+            Button("キャンセル", role: .cancel) { }
+            Button("破棄", role: .destructive) {
+                presentationMode.wrappedValue.dismiss()
+            }
+        } message: {
+            Text("変更された内容が保存されていません。変更を破棄して戻りますか？")
         }
         .alert("記録を削除", isPresented: $showDeleteAlert) {
             Button("キャンセル", role: .cancel) { }
@@ -141,6 +218,11 @@ struct RecordFormView: View {
             }
         } message: {
             Text("この記録を削除しますか？この操作は取り消せません。")
+        }
+        .alert("入力エラー", isPresented: $showValidationAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(validationMessage)
         }
     }
 }

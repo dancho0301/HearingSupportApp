@@ -10,7 +10,7 @@ import SwiftUI
 // 記録カード
 struct RecordCard: View {
     let record: Record
-    @State private var showPrintPreview = false
+    @State private var showPDFPreview = false
     
     private let formatter: DateFormatter = {
         let f = DateFormatter()
@@ -26,11 +26,16 @@ struct RecordCard: View {
                 Text(formatter.string(from: record.date))
                     .font(.title3)
                     .foregroundColor(.orange)
+                
+                Text(record.hospital)
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+                
                 Spacer()
                 
-                // 印刷プレビューボタン
+                // PDFプレビューボタン
                 Button(action: {
-                    showPrintPreview = true
+                    showPDFPreview = true
                 }) {
                     Image(systemName: "printer")
                         .font(.subheadline)
@@ -39,10 +44,6 @@ struct RecordCard: View {
                         .background(Color.blue.opacity(0.1))
                         .cornerRadius(8)
                 }
-                
-                Text(record.hospital)
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
             }
             
             Text(record.title)
@@ -70,8 +71,8 @@ struct RecordCard: View {
         .padding()
         .background(Color.white)
         .cornerRadius(16)
-        .sheet(isPresented: $showPrintPreview) {
-            PrintPreviewView(record: record)
+        .sheet(isPresented: $showPDFPreview) {
+            PDFPreviewView(record: record)
         }
     }
 }

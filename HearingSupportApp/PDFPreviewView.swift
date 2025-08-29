@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct PrintPreviewView: View {
+struct PDFPreviewView: View {
     let record: Record
     @Environment(\.dismiss) private var dismiss
     
@@ -8,12 +8,14 @@ struct PrintPreviewView: View {
         NavigationStack {
             ScrollView {
                 PrintableRecordView(record: record)
+                    .frame(width: 595, height: 842)
                     .scaleEffect(0.7)
                     .background(Color.white)
                     .shadow(radius: 5)
+                    .padding()
             }
             .background(Color(.systemGray6))
-            .navigationTitle("印刷プレビュー")
+            .navigationTitle("PDFプレビュー")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -23,10 +25,12 @@ struct PrintPreviewView: View {
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("印刷") {
-                        PrintManager.shared.printRecord(record)
+                    Button(action: {
+                        PDFExportManager.shared.exportRecordAsPDF(record)
+                    }) {
+                        Image(systemName: "square.and.arrow.up")
+                            .fontWeight(.semibold)
                     }
-                    .fontWeight(.semibold)
                 }
             }
         }
@@ -34,13 +38,13 @@ struct PrintPreviewView: View {
 }
 
 #Preview {
-    let sampleRecord = Record(
+    let sampleRecord = try! Record(
         date: Date(),
         hospital: "○○総合病院",
         title: "定期聴力検査",
         detail: "年次定期検査",
         results: [
-            TestResult(
+            try! TestResult(
                 ear: "両耳",
                 condition: "裸耳",
                 thresholdsBoth: [30, 35, 40, 45, 50, 55, 60],
@@ -49,5 +53,5 @@ struct PrintPreviewView: View {
         ]
     )
     
-    PrintPreviewView(record: sampleRecord)
+    PDFPreviewView(record: sampleRecord)
 }

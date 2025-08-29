@@ -124,14 +124,14 @@ final class UtilityTests: XCTestCase {
     
     // MARK: - TestResult Color Logic Tests
     
-    func testAllTestResultColorCombinations() {
+    func testAllTestResultColorCombinations() throws {
         let ears = ["両耳", "右耳のみ", "左耳のみ"]
-        let conditions = ["裸耳", "補聴器・人工内耳"]
+        let conditions = ["裸耳", "補聴器"]
         let freqs = ["125Hz", "250Hz", "500Hz", "1kHz", "2kHz", "4kHz", "8kHz"]
         
         for ear in ears {
             for condition in conditions {
-                let testResult = TestResult(
+                let testResult = try TestResult(
                     ear: ear,
                     condition: condition,
                     thresholdsRight: ear == "右耳のみ" ? [20, 25, 30, 35, 40, 45, 50] : nil,
@@ -179,7 +179,7 @@ final class UtilityTests: XCTestCase {
     // MARK: - String Handling Tests
     
     func testJapaneseTextHandling() {
-        let hospitalName = "千葉こども耳鼻科"
+        let hospitalName = "千葉利用者耳鼻科"
         let purpose = "定期検査"
         let notes = "聴力検査の結果、軽度の聴力低下が見られます。次回は3ヶ月後の予約をお取りください。"
         

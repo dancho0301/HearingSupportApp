@@ -27,38 +27,13 @@ struct TestResultInputView: View {
                 .pickerStyle(.segmented)
             }
             
-            HStack {
-                Button(action: {
-                    showingCamera = true
-                }) {
-                    HStack {
-                        Image(systemName: "camera")
-                        Text("検査結果を撮影")
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
-                }
-                .sheet(isPresented: $showingCamera) {
-                    CameraOCRView(recognizedText: $recognizedText, isPresented: $showingCamera)
-                }
-                .onChange(of: recognizedText) { _, newText in
-                    if !newText.isEmpty {
-                        parseOCRResult(newText)
-                        showingOCRResult = true
-                    }
-                }
-                
-                Spacer()
-            }
-            .padding(.bottom, 10)
+            /*
             .alert("OCR認識結果", isPresented: $showingOCRResult) {
                 Button("OK") { recognizedText = "" }
             } message: {
                 Text("認識されたテキスト:\n\(recognizedText)")
             }
+            */
             if result.ear == "右耳のみ" {
                 ForEach(0..<result.freqs.count, id: \.self) { i in
                     HStack {

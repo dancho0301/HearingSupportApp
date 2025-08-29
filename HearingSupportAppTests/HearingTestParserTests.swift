@@ -226,7 +226,7 @@ final class HearingTestParserTests: XCTestCase {
     func testParseComplexAudiogramData() throws {
         let complexText = """
         聴力検査結果 - 2025年8月20日
-        病院：千葉こども耳鼻科
+        病院：千葉利用者耳鼻科
         
         気導聴力検査
         周波数  125Hz  250Hz  500Hz  1kHz   2kHz   4kHz   8kHz

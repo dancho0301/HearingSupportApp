@@ -2,7 +2,7 @@
 //  ChildSelectionView.swift
 //  HearingSupportApp
 //
-//  こども切替画面
+//  利用者切替画面
 //
 
 import SwiftUI
@@ -28,7 +28,7 @@ struct ChildSelectionView: View {
                     }
                 }
             }
-            .navigationTitle("こどもを選択")
+            .navigationTitle("利用者を選択")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -58,11 +58,6 @@ struct ChildSelectionRow: View {
                         .font(.headline)
                         .foregroundColor(.primary)
                     
-                    if let birthDate = child.dateOfBirth {
-                        Text("生年月日: \(birthDate, formatter: dateFormatter)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
                     
                     if !child.notes.isEmpty {
                         Text(child.notes)
@@ -108,19 +103,8 @@ struct AddChildView: View {
     var body: some View {
         Form {
             Section(header: Text("基本情報")) {
-                TextField("お子さんの名前", text: $childName)
+                TextField("利用者の名前", text: $childName)
                 
-                Toggle("生年月日を設定する", isOn: $hasBirthDate)
-                
-                if hasBirthDate {
-                    DatePicker(
-                        "生年月日",
-                        selection: $birthDate,
-                        displayedComponents: .date
-                    )
-                    .datePickerStyle(WheelDatePickerStyle())
-                    .environment(\.locale, Locale(identifier: "ja_JP"))
-                }
             }
             
             Section(header: Text("メモ")) {
@@ -128,7 +112,7 @@ struct AddChildView: View {
                     .lineLimit(3...5)
             }
         }
-        .navigationTitle("こどもを追加")
+        .navigationTitle("利用者を追加")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
@@ -150,19 +134,17 @@ struct AddChildView: View {
         let name = childName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
         
-        let child = Child(
-            name: name,
-            dateOfBirth: hasBirthDate ? birthDate : nil,
-            notes: notes.trimmingCharacters(in: .whitespacesAndNewlines)
-        )
-        
-        modelContext.insert(child)
-        
         do {
+            let child = try Child(
+                name: name,
+                notes: notes.trimmingCharacters(in: .whitespacesAndNewlines)
+            )
+            
+            modelContext.insert(child)
             try modelContext.save()
             dismiss()
         } catch {
-            print("こども保存エラー: \(error)")
+            print("利用者作成エラー: \(error.localizedDescription)")
         }
     }
 }

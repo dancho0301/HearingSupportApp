@@ -45,7 +45,7 @@ final class TestResultInputTests: XCTestCase {
         
         XCTAssertEqual(testInput.conditionOptions.count, 2, "条件のオプションは2つであるべきです")
         XCTAssertTrue(testInput.conditionOptions.contains("裸耳"), "裸耳オプションが含まれるべきです")
-        XCTAssertTrue(testInput.conditionOptions.contains("補聴器・人工内耳"), "補聴器・人工内耳オプションが含まれるべきです")
+        XCTAssertTrue(testInput.conditionOptions.contains("補聴器"), "補聴器オプションが含まれるべきです")
         
         // 周波数配列の確認
         XCTAssertEqual(testInput.freqs.count, 7, "周波数配列は7要素であるべきです")
@@ -58,13 +58,13 @@ final class TestResultInputTests: XCTestCase {
     func testToResultRightEarOnly() throws {
         var testInput = TestResultInput()
         testInput.ear = "右耳のみ"
-        testInput.condition = "補聴器・人工内耳"
+        testInput.condition = "補聴器"
         testInput.thresholdsRight = [25, 30, 35, 40, 45, 50, 55]
         
-        let result = testInput.toResult()
+        let result = try testInput.toResult()
         
         XCTAssertEqual(result.ear, "右耳のみ", "耳の設定が正しく変換されるべきです")
-        XCTAssertEqual(result.condition, "補聴器・人工内耳", "条件の設定が正しく変換されるべきです")
+        XCTAssertEqual(result.condition, "補聴器", "条件の設定が正しく変換されるべきです")
         
         XCTAssertNotNil(result.thresholdsRight, "右耳の閾値が設定されるべきです")
         XCTAssertNil(result.thresholdsLeft, "左耳の閾値は設定されないべきです")
@@ -82,7 +82,7 @@ final class TestResultInputTests: XCTestCase {
         testInput.condition = "裸耳"
         testInput.thresholdsLeft = [20, 25, 30, 35, 40, 45, 50]
         
-        let result = testInput.toResult()
+        let result = try testInput.toResult()
         
         XCTAssertEqual(result.ear, "左耳のみ", "耳の設定が正しく変換されるべきです")
         XCTAssertEqual(result.condition, "裸耳", "条件の設定が正しく変換されるべきです")
@@ -103,7 +103,7 @@ final class TestResultInputTests: XCTestCase {
         testInput.condition = "裸耳"
         testInput.thresholdsBoth = [15, 20, 25, 30, 35, 40, 45]
         
-        let result = testInput.toResult()
+        let result = try testInput.toResult()
         
         XCTAssertEqual(result.ear, "両耳", "耳の設定が正しく変換されるべきです")
         XCTAssertEqual(result.condition, "裸耳", "条件の設定が正しく変換されるべきです")
@@ -189,7 +189,7 @@ final class TestResultInputTests: XCTestCase {
         testInput.thresholdsRight[1] = 0    // ゼロ
         testInput.thresholdsRight[2] = 120  // 最大値
         
-        let result = testInput.toResult()
+        let result = try testInput.toResult()
         result.ear = "右耳のみ"
         
         if let rightThresholds = result.thresholdsRight {
@@ -209,7 +209,7 @@ final class TestResultInputTests: XCTestCase {
         XCTAssertEqual(testInput.freqs, expectedFrequencies, "周波数データが正しく設定されるべきです")
         
         // toResult()で周波数データが正しく引き継がれるか確認
-        let result = testInput.toResult()
+        let result = try testInput.toResult()
         XCTAssertEqual(result.freqs, expectedFrequencies, "TestResultに周波数データが正しく変換されるべきです")
     }
     
@@ -232,8 +232,7 @@ final class TestResultInputTests: XCTestCase {
     func testConditionOptions() throws {
         let testInput = TestResultInput()
         
-        let expectedConditionOptions = ["裸耳", "補聴器・人工内耳"]
-        XCTAssertEqual(Set(testInput.conditionOptions), Set(expectedConditionOptions), "条件のオプションが正しく設定されるべきです")
+        let expectedConditionOptions = ["裸耳", "補聴器"]
         
         // 各オプションが有効な選択肢として機能するか確認
         for option in expectedConditionOptions {

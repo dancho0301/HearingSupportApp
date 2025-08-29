@@ -14,9 +14,9 @@ final class ModelsTests: XCTestCase {
     
     // MARK: - TestResult Tests
     
-    func testTestResultDisplayColor() {
+    func testTestResultDisplayColor() throws {
         // 両耳・裸耳 -> 青
-        let bothEarsNaked = TestResult(
+        let bothEarsNaked = try TestResult(
             ear: "両耳",
             condition: "裸耳",
             thresholdsRight: nil,
@@ -27,7 +27,7 @@ final class ModelsTests: XCTestCase {
         XCTAssertEqual(bothEarsNaked.displayColor, .blue)
         
         // 右耳のみ・裸耳 -> 赤
-        let rightEarNaked = TestResult(
+        let rightEarNaked = try TestResult(
             ear: "右耳のみ",
             condition: "裸耳",
             thresholdsRight: [20, 25, 30, 35, 40, 45, 50],
@@ -37,10 +37,10 @@ final class ModelsTests: XCTestCase {
         )
         XCTAssertEqual(rightEarNaked.displayColor, .red)
         
-        // 左耳のみ・補聴器・人工内耳 -> mint
-        let leftEarAided = TestResult(
+        // 左耳のみ・補聴器 -> mint
+        let leftEarAided = try TestResult(
             ear: "左耳のみ",
-            condition: "補聴器・人工内耳",
+            condition: "補聴器",
             thresholdsRight: nil,
             thresholdsLeft: [15, 20, 25, 30, 35, 40, 45],
             thresholdsBoth: nil,
@@ -49,7 +49,7 @@ final class ModelsTests: XCTestCase {
         XCTAssertEqual(leftEarAided.displayColor, .mint)
         
         // 未定義パターン -> グレー
-        let unknownPattern = TestResult(
+        let unknownPattern = try TestResult(
             ear: "不明",
             condition: "不明",
             thresholdsRight: nil,
@@ -60,11 +60,11 @@ final class ModelsTests: XCTestCase {
         XCTAssertEqual(unknownPattern.displayColor, .gray)
     }
     
-    func testTestResultGraphData() {
+    func testTestResultGraphData() throws {
         let testData = [20, 25, 30, 35, 40, 45, 50]
         
         // 右耳のみ -> thresholdsRightを返す
-        let rightEar = TestResult(
+        let rightEar = try TestResult(
             ear: "右耳のみ",
             condition: "裸耳",
             thresholdsRight: testData,
@@ -75,7 +75,7 @@ final class ModelsTests: XCTestCase {
         XCTAssertEqual(rightEar.graphData, testData)
         
         // 左耳のみ -> thresholdsLeftを返す
-        let leftEar = TestResult(
+        let leftEar = try TestResult(
             ear: "左耳のみ",
             condition: "裸耳",
             thresholdsRight: nil,
@@ -86,7 +86,7 @@ final class ModelsTests: XCTestCase {
         XCTAssertEqual(leftEar.graphData, testData)
         
         // 両耳 -> thresholdsBothを返す
-        let bothEars = TestResult(
+        let bothEars = try TestResult(
             ear: "両耳",
             condition: "裸耳",
             thresholdsRight: nil,
@@ -97,7 +97,7 @@ final class ModelsTests: XCTestCase {
         XCTAssertEqual(bothEars.graphData, testData)
         
         // 不明 -> nilを返す
-        let unknownEar = TestResult(
+        let unknownEar = try TestResult(
             ear: "不明",
             condition: "裸耳",
             thresholdsRight: testData,
@@ -108,21 +108,21 @@ final class ModelsTests: XCTestCase {
         XCTAssertNil(unknownEar.graphData)
     }
     
-    func testTestResultDisplayLabel() {
-        let testResult = TestResult(
+    func testTestResultDisplayLabel() throws {
+        let testResult = try TestResult(
             ear: "右耳のみ",
-            condition: "補聴器・人工内耳",
+            condition: "補聴器",
             thresholdsRight: [20, 25, 30, 35, 40, 45, 50],
             thresholdsLeft: nil,
             thresholdsBoth: nil,
             freqs: ["125Hz", "250Hz", "500Hz", "1kHz", "2kHz", "4kHz", "8kHz"]
         )
-        XCTAssertEqual(testResult.displayLabel, "右耳のみ・補聴器・人工内耳")
+        XCTAssertEqual(testResult.displayLabel, "右耳のみ・補聴器")
     }
     
     // MARK: - TestResultInput Tests
     
-    func testTestResultInputConversion() {
+    func testTestResultInputConversion() throws {
         var input = TestResultInput()
         input.ear = "右耳のみ"
         input.condition = "裸耳"
@@ -130,7 +130,7 @@ final class ModelsTests: XCTestCase {
         // 右耳のデータを設定
         input.thresholdsRight = [20, 25, 30, 35, 40, 45, 50]
         
-        let testResult = input.toResult()
+        let testResult = try input.toResult()
         
         XCTAssertEqual(testResult.ear, "右耳のみ")
         XCTAssertEqual(testResult.condition, "裸耳")
@@ -140,18 +140,18 @@ final class ModelsTests: XCTestCase {
         XCTAssertEqual(testResult.freqs, ["125Hz", "250Hz", "500Hz", "1kHz", "2kHz", "4kHz", "8kHz"])
     }
     
-    func testTestResultInputBothEarsConversion() {
+    func testTestResultInputBothEarsConversion() throws {
         var input = TestResultInput()
         input.ear = "両耳"
-        input.condition = "補聴器・人工内耳"
+        input.condition = "補聴器"
         
         // 両耳のデータを設定
         input.thresholdsBoth = [15, 20, 25, 30, 35, 40, 45]
         
-        let testResult = input.toResult()
+        let testResult = try input.toResult()
         
         XCTAssertEqual(testResult.ear, "両耳")
-        XCTAssertEqual(testResult.condition, "補聴器・人工内耳")
+        XCTAssertEqual(testResult.condition, "補聴器")
         XCTAssertNil(testResult.thresholdsRight)
         XCTAssertNil(testResult.thresholdsLeft)
         XCTAssertEqual(testResult.thresholdsBoth, [15, 20, 25, 30, 35, 40, 45])
@@ -159,13 +159,13 @@ final class ModelsTests: XCTestCase {
     
     // MARK: - Record Tests
     
-    func testRecordInitialization() {
+    func testRecordInitialization() throws {
         let date = Date()
         let hospital = "テスト病院"
         let title = "定期検査"
         let detail = "年次健診"
         
-        let testResult = TestResult(
+        let testResult = try TestResult(
             ear: "両耳",
             condition: "裸耳",
             thresholdsRight: nil,
@@ -174,7 +174,7 @@ final class ModelsTests: XCTestCase {
             freqs: ["125Hz", "250Hz", "500Hz", "1kHz", "2kHz", "4kHz", "8kHz"]
         )
         
-        let record = Record(
+        let record = try Record(
             date: date,
             hospital: hospital,
             title: title,
@@ -192,20 +192,19 @@ final class ModelsTests: XCTestCase {
     
     // MARK: - Appointment Tests
     
-    func testAppointmentInitialization() {
+    func testAppointmentInitialization() throws {
         let appointmentDate = Date()
         let appointmentTime = Date()
-        let hospital = "千葉こども耳鼻科"
+        let hospital = "千葉利用者耳鼻科"
         let purpose = "定期検査"
         let notes = "聴力検査予定"
         
-        let appointment = Appointment(
+        let appointment = try Appointment(
             hospital: hospital,
             appointmentDate: appointmentDate,
             appointmentTime: appointmentTime,
             purpose: purpose,
-            notes: notes,
-            reminderEnabled: true
+            notes: notes
         )
         
         XCTAssertEqual(appointment.hospital, hospital)
@@ -213,12 +212,9 @@ final class ModelsTests: XCTestCase {
         XCTAssertEqual(appointment.appointmentTime, appointmentTime)
         XCTAssertEqual(appointment.purpose, purpose)
         XCTAssertEqual(appointment.notes, notes)
-        XCTAssertTrue(appointment.reminderEnabled)
-        XCTAssertFalse(appointment.isCompleted)
-        XCTAssertNotNil(appointment.reminderTime)
     }
     
-    func testAppointmentFullAppointmentDate() {
+    func testAppointmentFullAppointmentDate() throws {
         let calendar = Calendar.current
         
         // 2025年8月20日
@@ -226,12 +222,11 @@ final class ModelsTests: XCTestCase {
         // 15:30
         let appointmentTime = calendar.date(from: DateComponents(hour: 15, minute: 30))!
         
-        let appointment = Appointment(
+        let appointment = try Appointment(
             hospital: "テスト病院",
             appointmentDate: appointmentDate,
             appointmentTime: appointmentTime,
-            purpose: "検査",
-            reminderEnabled: false
+            purpose: "検査"
         )
         
         let fullDate = appointment.fullAppointmentDate
@@ -244,45 +239,5 @@ final class ModelsTests: XCTestCase {
         XCTAssertEqual(components.minute, 30)
     }
     
-    func testAppointmentReminderTime() {
-        let calendar = Calendar.current
-        
-        // 2025年8月20日 15:00
-        let appointmentDate = calendar.date(from: DateComponents(year: 2025, month: 8, day: 20))!
-        let appointmentTime = calendar.date(from: DateComponents(hour: 15, minute: 0))!
-        
-        let appointment = Appointment(
-            hospital: "テスト病院",
-            appointmentDate: appointmentDate,
-            appointmentTime: appointmentTime,
-            purpose: "検査",
-            reminderEnabled: true
-        )
-        
-        guard let reminderTime = appointment.reminderTime else {
-            XCTFail("リマインダー時刻が設定されていません")
-            return
-        }
-        
-        let reminderComponents = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: reminderTime)
-        
-        // 1時間前（14:00）になっているかチェック
-        XCTAssertEqual(reminderComponents.year, 2025)
-        XCTAssertEqual(reminderComponents.month, 8)
-        XCTAssertEqual(reminderComponents.day, 20)
-        XCTAssertEqual(reminderComponents.hour, 14)
-        XCTAssertEqual(reminderComponents.minute, 0)
-    }
     
-    func testAppointmentNoReminder() {
-        let appointment = Appointment(
-            hospital: "テスト病院",
-            appointmentDate: Date(),
-            appointmentTime: Date(),
-            purpose: "検査",
-            reminderEnabled: false
-        )
-        
-        XCTAssertNil(appointment.reminderTime)
-    }
 }

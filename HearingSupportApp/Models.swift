@@ -10,26 +10,59 @@ import SwiftUI
 import SwiftData
 import Foundation
 
+enum ValidationError: LocalizedError {
+    case emptyName
+    case emptyHospital
+    case emptyTestType
+    case emptyEar
+    case emptyCondition
+    case emptyPurpose
+    
+    var errorDescription: String? {
+        switch self {
+        case .emptyName:
+            return "利用者名を入力してください"
+        case .emptyHospital:
+            return "病院名を入力してください"
+        case .emptyTestType:
+            return "検査種類を選択してください"
+        case .emptyEar:
+            return "検査対象耳を選択してください"
+        case .emptyCondition:
+            return "検査条件を選択してください"
+        case .emptyPurpose:
+            return "予約目的を入力してください"
+        }
+    }
+}
+
 @Model
 final class Child {
     var id: UUID
     var name: String
-    var dateOfBirth: Date?
     var notes: String
     var isActive: Bool
     var createdAt: Date
     var records: [Record]
     var appointments: [Appointment]
     
-    init(name: String, dateOfBirth: Date? = nil, notes: String = "") {
+    init(name: String, notes: String = "") throws {
+        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ValidationError.emptyName
+        }
         self.id = UUID()
-        self.name = name
-        self.dateOfBirth = dateOfBirth
+        self.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         self.notes = notes
         self.isActive = true
         self.createdAt = Date()
         self.records = []
         self.appointments = []
+    }
+    
+    func validate() throws {
+        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ValidationError.emptyName
+        }
     }
 }
 
@@ -43,14 +76,29 @@ final class Record {
     var results: [TestResult]
     var child: Child?
     
-    init(date: Date, hospital: String, title: String, detail: String, results: [TestResult] = [], child: Child? = nil) {
+    init(date: Date, hospital: String, title: String, detail: String, results: [TestResult] = [], child: Child? = nil) throws {
+        guard !hospital.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ValidationError.emptyHospital
+        }
+        guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ValidationError.emptyTestType
+        }
         self.id = UUID()
         self.date = date
-        self.hospital = hospital
-        self.title = title
+        self.hospital = hospital.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         self.detail = detail
         self.results = results
         self.child = child
+    }
+    
+    func validate() throws {
+        guard !hospital.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ValidationError.emptyHospital
+        }
+        guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ValidationError.emptyTestType
+        }
     }
 }
 
@@ -64,10 +112,16 @@ final class TestResult {
     var thresholdsBothData: Data?
     var freqsData: Data
     
-    init(ear: String, condition: String, thresholdsRight: [Int?]? = nil, thresholdsLeft: [Int?]? = nil, thresholdsBoth: [Int?]? = nil, freqs: [String]) {
+    init(ear: String, condition: String, thresholdsRight: [Int?]? = nil, thresholdsLeft: [Int?]? = nil, thresholdsBoth: [Int?]? = nil, freqs: [String]) throws {
+        guard !ear.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ValidationError.emptyEar
+        }
+        guard !condition.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ValidationError.emptyCondition
+        }
         self.id = UUID()
-        self.ear = ear
-        self.condition = condition
+        self.ear = ear.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.condition = condition.trimmingCharacters(in: .whitespacesAndNewlines)
         
         // 配列をDataに変換して保存
         if let right = thresholdsRight {
@@ -80,6 +134,15 @@ final class TestResult {
             self.thresholdsBothData = try? JSONEncoder().encode(both)
         }
         self.freqsData = (try? JSONEncoder().encode(freqs)) ?? Data()
+    }
+    
+    func validate() throws {
+        guard !ear.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ValidationError.emptyEar
+        }
+        guard !condition.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ValidationError.emptyCondition
+        }
     }
     
     // 計算プロパティで配列として取得
@@ -166,7 +229,7 @@ final class AppSettings {
     var testTypeSettingsData: Data?
     var hospitalSettingsData: Data?
     
-    init(hospitalList: [String] = ["千葉こども耳鼻科", "東京医大", "柏総合病院"], 
+    init(hospitalList: [String] = [], 
          testTypes: [String] = [
             "ABR（聴性脳幹反応）",
             "OAE（耳音響放射）", 
@@ -315,11 +378,11 @@ struct TestResultInput: Identifiable, Hashable {
     var thresholdsLeft: [Int?] = Array(repeating: nil, count: 7)
     var thresholdsBoth: [Int?] = Array(repeating: nil, count: 7)
     let earOptions = ["右耳のみ", "左耳のみ", "両耳"]
-    let conditionOptions = ["裸耳", "補聴器・人工内耳"]
+    let conditionOptions = ["裸耳", "補聴器"]
     let freqs = ["125Hz", "250Hz", "500Hz", "1kHz", "2kHz", "4kHz", "8kHz"]
 
-    func toResult() -> TestResult {
-        TestResult(
+    func toResult() throws -> TestResult {
+        try TestResult(
             ear: ear,
             condition: condition,
             thresholdsRight: ear == "右耳のみ" ? thresholdsRight : nil,
@@ -335,18 +398,18 @@ extension TestResult {
     // 検査結果パターンに応じた固有色を返す
     var displayColor: Color {
         switch (ear, condition) {
-        case ("両耳", "裸耳"):
-            return .blue
-        case ("両耳", "補聴器・人工内耳"):
-            return .cyan
         case ("右耳のみ", "裸耳"):
             return .red
-        case ("右耳のみ", "補聴器・人工内耳"):
-            return .orange
+        case ("右耳のみ", "補聴器"):
+            return Color(red: 0.8, green: 0.2, blue: 0.2) // 少し暗い赤
         case ("左耳のみ", "裸耳"):
+            return .blue
+        case ("左耳のみ", "補聴器"):
+            return Color(red: 0.2, green: 0.4, blue: 0.8) // 少し暗い青
+        case ("両耳", "裸耳"):
             return .green
-        case ("左耳のみ", "補聴器・人工内耳"):
-            return .mint
+        case ("両耳", "補聴器"):
+            return Color(red: 0.2, green: 0.6, blue: 0.2) // 少し暗い緑
         default:
             return .gray
         }
@@ -381,38 +444,30 @@ final class Appointment {
     var appointmentTime: Date
     var purpose: String
     var notes: String
-    var isCompleted: Bool
-    var reminderEnabled: Bool
-    var reminderTime: Date?
     var child: Child?
     
-    init(hospital: String, appointmentDate: Date, appointmentTime: Date, purpose: String, notes: String = "", reminderEnabled: Bool = true, child: Child? = nil) {
+    init(hospital: String, appointmentDate: Date, appointmentTime: Date, purpose: String, notes: String = "", child: Child? = nil) throws {
+        guard !hospital.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ValidationError.emptyHospital
+        }
+        guard !purpose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ValidationError.emptyPurpose
+        }
         self.id = UUID()
-        self.hospital = hospital
+        self.hospital = hospital.trimmingCharacters(in: .whitespacesAndNewlines)
         self.appointmentDate = appointmentDate
         self.appointmentTime = appointmentTime
-        self.purpose = purpose
+        self.purpose = purpose.trimmingCharacters(in: .whitespacesAndNewlines)
         self.notes = notes
-        self.isCompleted = false
-        self.reminderEnabled = reminderEnabled
         self.child = child
-        
-        // デフォルトで1時間前にリマインダー設定
-        if reminderEnabled {
-            let calendar = Calendar.current
-            let dateComponents = calendar.dateComponents([.year, .month, .day], from: appointmentDate)
-            let timeComponents = calendar.dateComponents([.hour, .minute], from: appointmentTime)
-            
-            var combinedComponents = DateComponents()
-            combinedComponents.year = dateComponents.year
-            combinedComponents.month = dateComponents.month
-            combinedComponents.day = dateComponents.day
-            combinedComponents.hour = timeComponents.hour
-            combinedComponents.minute = timeComponents.minute
-            
-            if let appointmentDateTime = calendar.date(from: combinedComponents) {
-                self.reminderTime = calendar.date(byAdding: .hour, value: -1, to: appointmentDateTime)
-            }
+    }
+    
+    func validate() throws {
+        guard !hospital.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ValidationError.emptyHospital
+        }
+        guard !purpose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw ValidationError.emptyPurpose
         }
     }
     

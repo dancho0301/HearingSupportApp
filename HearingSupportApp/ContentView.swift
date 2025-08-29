@@ -29,12 +29,12 @@ struct ContentView: View {
         }
     }
     
-    // アクティブなこどもを取得
+    // アクティブな利用者を取得
     private var activeChildren: [Child] {
         return children.filter { $0.isActive }
     }
     
-    // 選択中のこどもに基づいてデータを更新
+    // 選択中の利用者に基づいてデータを更新
     private func updateChildData() {
         guard let selectedChild = selectedChild else {
             records = []
@@ -53,9 +53,9 @@ struct ContentView: View {
                     .ignoresSafeArea()
 
                 VStack(spacing: 0) {
-                    Spacer().frame(height: 40)
+                    Spacer().frame(height: 20)
                     
-                    // ヘッダー部分（こども名前表示＋切替ボタン）
+                    // ヘッダー部分（利用者名前表示＋切替ボタン）
                     Button(action: {
                         showChildSelection = true
                     }) {
@@ -66,7 +66,7 @@ struct ContentView: View {
                                     .bold()
                                     .foregroundColor(.black)
                             } else {
-                                Text("こどもを選択")
+                                Text("利用者を選択")
                                     .font(.title)
                                     .bold()
                                     .foregroundColor(.gray)
@@ -170,8 +170,13 @@ struct ContentView: View {
                             editingRecord.detail = detail
                             editingRecord.results = results
                         } else {
-                            let newRecord = Record(date: date, hospital: hospital, title: title, detail: detail, results: results, child: selectedChild)
-                            modelContext.insert(newRecord)
+                            do {
+                                let newRecord = try Record(date: date, hospital: hospital, title: title, detail: detail, results: results, child: selectedChild)
+                                modelContext.insert(newRecord)
+                            } catch {
+                                print("Record作成エラー: \(error.localizedDescription)")
+                                return
+                            }
                         }
                         
                         // 新しい病院が追加された場合はリストにも反映
@@ -203,7 +208,7 @@ struct ContentView: View {
             .fullScreenCover(isPresented: $showInitialSetup) {
                 InitialSetupView {
                     showInitialSetup = false
-                    // 作成されたこどもを自動選択
+                    // 作成された利用者を自動選択
                     if let newChild = activeChildren.first {
                         selectedChild = newChild
                     }
@@ -213,17 +218,6 @@ struct ContentView: View {
                 // 初回起動時の処理
                 setupInitialState()
                 
-                // アプリ起動時に通知許可を要求
-                Task {
-                    let granted = await NotificationManager.shared.requestPermission()
-                    if granted {
-                        print("通知許可が得られました")
-                        // 既存の予定のリマインダーを設定
-                        await NotificationManager.shared.updateAllAppointmentReminders(appointments: allAppointments)
-                    } else {
-                        print("通知許可が拒否されました")
-                    }
-                }
             }
             .onChange(of: selectedChild) {
                 updateChildData()
@@ -238,14 +232,14 @@ struct ContentView: View {
     }
     
     private func setupInitialState() {
-        // 既存のレコードでこどもが関連付けられていないものの処理
+        // 既存のレコードで利用者が関連付けられていないものの処理
         migrateOrphanedRecords()
         
-        // こどもがいない場合は初期設定画面を表示
+        // 利用者がいない場合は初期設定画面を表示
         if activeChildren.isEmpty {
             showInitialSetup = true
         } else {
-            // 既存のこどもがいる場合、最初のこどもを選択
+            // 既存の利用者がいる場合、最初の利用者を選択
             if selectedChild == nil {
                 selectedChild = activeChildren.first
             }
@@ -256,7 +250,7 @@ struct ContentView: View {
     }
     
     private func migrateOrphanedRecords() {
-        // こどもが関連付けられていないレコードを検索
+        // 利用者が関連付けられていないレコードを検索
         let orphanedRecords = allRecords.filter { $0.child == nil }
         let orphanedAppointments = allAppointments.filter { $0.child == nil }
         
@@ -264,15 +258,20 @@ struct ContentView: View {
             return
         }
         
-        // 最初のアクティブなこどもに関連付け、または新しいこどもを作成
+        // 最初のアクティブな利用者に関連付け、または新しい利用者を作成
         var targetChild: Child
         
         if let firstActiveChild = activeChildren.first {
             targetChild = firstActiveChild
         } else {
-            // こどもが存在しない場合はデフォルトのこどもを作成
-            targetChild = Child(name: "こども", notes: "既存のデータから自動作成")
-            modelContext.insert(targetChild)
+            // 利用者が存在しない場合はデフォルトの利用者を作成
+            do {
+                targetChild = try Child(name: "利用者", notes: "既存のデータから自動作成")
+                modelContext.insert(targetChild)
+            } catch {
+                print("デフォルト利用者作成エラー: \(error.localizedDescription)")
+                return
+            }
         }
         
         // 孤児レコードを関連付け
@@ -297,7 +296,7 @@ struct ContentView: View {
         
         // シンプルな日付比較で最適化
         return appointments
-            .filter { !$0.isCompleted && $0.appointmentDate >= today }
+            .filter { $0.appointmentDate >= today }
             .first
     }
 }

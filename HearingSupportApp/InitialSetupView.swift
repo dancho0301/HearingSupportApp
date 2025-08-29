@@ -2,7 +2,7 @@
 //  InitialSetupView.swift
 //  HearingSupportApp
 //
-//  初回起動時のこども名前入力画面
+//  初回起動時の利用者名前入力画面
 //
 
 import SwiftUI
@@ -31,7 +31,7 @@ struct InitialSetupView: View {
                         .font(.title2)
                         .fontWeight(.semibold)
                     
-                    Text("お子さんの聴力検査記録を管理しましょう")
+                    Text("利用者の聴力検査記録を管理しましょう")
                         .font(.body)
                         .multilineTextAlignment(.center)
                         .foregroundColor(.secondary)
@@ -41,28 +41,12 @@ struct InitialSetupView: View {
                 
                 VStack(alignment: .leading, spacing: 16) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("お子さんの名前")
+                        Text("利用者の名前")
                             .font(.headline)
                         TextField("名前を入力してください", text: $childName)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
                     }
                     
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Toggle("生年月日を設定する", isOn: $hasBirthDate)
-                                .font(.headline)
-                        }
-                        
-                        if hasBirthDate {
-                            DatePicker(
-                                "生年月日",
-                                selection: $birthDate,
-                                displayedComponents: .date
-                            )
-                            .datePickerStyle(WheelDatePickerStyle())
-                            .environment(\.locale, Locale(identifier: "ja_JP"))
-                        }
-                    }
                     
                     VStack(alignment: .leading, spacing: 8) {
                         Text("メモ（任意）")
@@ -99,19 +83,17 @@ struct InitialSetupView: View {
         let name = childName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
         
-        let child = Child(
-            name: name,
-            dateOfBirth: hasBirthDate ? birthDate : nil,
-            notes: notes.trimmingCharacters(in: .whitespacesAndNewlines)
-        )
-        
-        modelContext.insert(child)
-        
         do {
+            let child = try Child(
+                name: name,
+                notes: notes.trimmingCharacters(in: .whitespacesAndNewlines)
+            )
+            
+            modelContext.insert(child)
             try modelContext.save()
             onComplete()
         } catch {
-            print("こども作成エラー: \(error)")
+            print("利用者作成エラー: \(error.localizedDescription)")
         }
     }
 }
