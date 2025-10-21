@@ -476,16 +476,14 @@ final class Appointment {
         let calendar = Calendar.current
         let dateComponents = calendar.dateComponents([.year, .month, .day], from: appointmentDate)
         let timeComponents = calendar.dateComponents([.hour, .minute], from: appointmentTime)
-        
+
         var combinedComponents = DateComponents()
         combinedComponents.year = dateComponents.year
         combinedComponents.month = dateComponents.month
         combinedComponents.day = dateComponents.day
         combinedComponents.hour = timeComponents.hour
         combinedComponents.minute = timeComponents.minute
-        
-        let result = calendar.date(from: combinedComponents) ?? appointmentDate
-        print("fullAppointmentDate計算: \(hospital) - 日付:\(appointmentDate) 時刻:\(appointmentTime) → 結果:\(result)")
-        return result
+
+        return calendar.date(from: combinedComponents) ?? appointmentDate
     }
 }

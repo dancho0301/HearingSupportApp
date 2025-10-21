@@ -21,6 +21,16 @@
 		5AF5134B2DE5C3DF00E4833F /* HearingSupportApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HearingSupportApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		5A4098132EA6D31F00706E03 /* Exceptions for "HearingSupportApp" folder in "HearingSupportApp" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 5AF5134A2DE5C3DF00E4833F /* HearingSupportApp */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		5AF13F612E556A8F00A08A53 /* HearingSupportAppTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
@@ -29,6 +39,9 @@
 		};
 		5AF5134D2DE5C3DF00E4833F /* HearingSupportApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				5A4098132EA6D31F00706E03 /* Exceptions for "HearingSupportApp" folder in "HearingSupportApp" target */,
+			);
 			path = HearingSupportApp;
 			sourceTree = "<group>";
 		};
@@ -368,13 +381,12 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"HearingSupportApp/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = HearingSupportApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "おみみ手帳";
 				INFOPLIST_KEY_NSCameraUsageDescription = "聴力検査結果の紙を撮影して取り込むためにカメラアクセスが必要です。";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "お子さまの聞こえ方をシミュレーションするため、音声の録音と処理にマイクロフォンアクセスが必要です。録音されたデータは外部に送信されません。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -399,13 +411,12 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"HearingSupportApp/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = HearingSupportApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "おみみ手帳";
 				INFOPLIST_KEY_NSCameraUsageDescription = "聴力検査結果の紙を撮影して取り込むためにカメラアクセスが必要です。";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "お子さまの聞こえ方をシミュレーションするため、音声の録音と処理にマイクロフォンアクセスが必要です。録音されたデータは外部に送信されません。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (

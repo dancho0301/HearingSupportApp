@@ -16,34 +16,23 @@ struct ContentView: View {
     @State private var showChildSelection = false
     @State private var showInitialSetup = false
     @State private var selectedChild: Child? = nil
-    @State private var records: [Record] = []
-    @State private var appointments: [Appointment] = []
-    
-    private var settings: AppSettings {
-        if let firstSettings = appSettings.first {
-            return firstSettings
-        } else {
-            let newSettings = AppSettings()
-            modelContext.insert(newSettings)
-            return newSettings
-        }
-    }
-    
+    @State private var settings: AppSettings? = nil
+
     // アクティブな利用者を取得
     private var activeChildren: [Child] {
         return children.filter { $0.isActive }
     }
-    
-    // 選択中の利用者に基づいてデータを更新
-    private func updateChildData() {
-        guard let selectedChild = selectedChild else {
-            records = []
-            appointments = []
-            return
-        }
-        
-        records = allRecords.filter { $0.child?.id == selectedChild.id }
-        appointments = allAppointments.filter { $0.child?.id == selectedChild.id }
+
+    // 選択中の利用者のレコードを取得（計算プロパティ）
+    private var records: [Record] {
+        guard let selectedChild = selectedChild else { return [] }
+        return allRecords.filter { $0.child?.id == selectedChild.id }
+    }
+
+    // 選択中の利用者の予定を取得（計算プロパティ）
+    private var appointments: [Appointment] {
+        guard let selectedChild = selectedChild else { return [] }
+        return allAppointments.filter { $0.child?.id == selectedChild.id }
     }
 
     var body: some View {
@@ -160,7 +149,7 @@ struct ContentView: View {
             .navigationDestination(isPresented: $showForm) {
                 RecordFormView(
                     record: editingRecord,
-                    settings: settings,
+                    settings: settings ?? AppSettings(),
                     isEditing: isEditing,
                     onSave: { hospital, title, date, detail, results in
                         if isEditing, let editingRecord = editingRecord {
@@ -174,13 +163,15 @@ struct ContentView: View {
                                 let newRecord = try Record(date: date, hospital: hospital, title: title, detail: detail, results: results, child: selectedChild)
                                 modelContext.insert(newRecord)
                             } catch {
+                                #if DEBUG
                                 print("Record作成エラー: \(error.localizedDescription)")
+                                #endif
                                 return
                             }
                         }
                         
                         // 新しい病院が追加された場合はリストにも反映
-                        if !settings.hospitalList.contains(hospital) {
+                        if let settings = settings, !settings.hospitalList.contains(hospital) {
                             settings.hospitalList.append(hospital)
                         }
                         
@@ -197,7 +188,7 @@ struct ContentView: View {
                 )
             }
             .navigationDestination(isPresented: $showSettings) {
-                SettingsView(settings: settings)
+                SettingsView(settings: settings ?? AppSettings())
             }
             .navigationDestination(isPresented: $showAppointments) {
                 AppointmentListView()
@@ -215,18 +206,20 @@ struct ContentView: View {
                 }
             }
             .onAppear {
+                // AppSettingsの初期化
+                if settings == nil {
+                    if let existingSettings = appSettings.first {
+                        settings = existingSettings
+                    } else {
+                        let newSettings = AppSettings()
+                        modelContext.insert(newSettings)
+                        try? modelContext.save()
+                        settings = newSettings
+                    }
+                }
+
                 // 初回起動時の処理
                 setupInitialState()
-                
-            }
-            .onChange(of: selectedChild) {
-                updateChildData()
-            }
-            .onChange(of: allRecords) {
-                updateChildData()
-            }
-            .onChange(of: allAppointments) {
-                updateChildData()
             }
         }
     }
@@ -234,7 +227,7 @@ struct ContentView: View {
     private func setupInitialState() {
         // 既存のレコードで利用者が関連付けられていないものの処理
         migrateOrphanedRecords()
-        
+
         // 利用者がいない場合は初期設定画面を表示
         if activeChildren.isEmpty {
             showInitialSetup = true
@@ -244,23 +237,30 @@ struct ContentView: View {
                 selectedChild = activeChildren.first
             }
         }
-        
-        // 初期データ更新
-        updateChildData()
     }
     
     private func migrateOrphanedRecords() {
+        // マイグレーション済みかチェック
+        let migrationKey = "hasCompletedChildMigration_v1"
+        let hasCompleted = UserDefaults.standard.bool(forKey: migrationKey)
+
+        if hasCompleted {
+            return
+        }
+
         // 利用者が関連付けられていないレコードを検索
         let orphanedRecords = allRecords.filter { $0.child == nil }
         let orphanedAppointments = allAppointments.filter { $0.child == nil }
-        
+
         guard !orphanedRecords.isEmpty || !orphanedAppointments.isEmpty else {
+            // データがない場合もマイグレーション完了としてマーク
+            UserDefaults.standard.set(true, forKey: migrationKey)
             return
         }
-        
+
         // 最初のアクティブな利用者に関連付け、または新しい利用者を作成
         var targetChild: Child
-        
+
         if let firstActiveChild = activeChildren.first {
             targetChild = firstActiveChild
         } else {
@@ -269,25 +269,32 @@ struct ContentView: View {
                 targetChild = try Child(name: "利用者", notes: "既存のデータから自動作成")
                 modelContext.insert(targetChild)
             } catch {
+                #if DEBUG
                 print("デフォルト利用者作成エラー: \(error.localizedDescription)")
+                #endif
                 return
             }
         }
-        
+
         // 孤児レコードを関連付け
         for record in orphanedRecords {
             record.child = targetChild
         }
-        
+
         // 孤児予定を関連付け
         for appointment in orphanedAppointments {
             appointment.child = targetChild
         }
-        
+
         // 変更を保存
         try? modelContext.save()
-        
+
+        #if DEBUG
         print("移行処理完了: \(orphanedRecords.count)件のレコードと\(orphanedAppointments.count)件の予定を\(targetChild.name)に関連付けました")
+        #endif
+
+        // マイグレーション完了フラグを設定
+        UserDefaults.standard.set(true, forKey: migrationKey)
     }
     
     private var nextUpcomingAppointment: Appointment? {

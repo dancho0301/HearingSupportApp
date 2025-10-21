@@ -2,6 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Language Preference
+
+**IMPORTANT: All communication with the user must be conducted in Japanese (日本語).**
+This instruction is permanent and applies to all interactions throughout the development session.
+
 ## Project Overview
 
 HearingSupportApp is a SwiftUI iOS application designed as a hearing test record management app ("おみみ手帳" - Ear Notebook). The app allows users to track hearing test results over time with visualization capabilities.
