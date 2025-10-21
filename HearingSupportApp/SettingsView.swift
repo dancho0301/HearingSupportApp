@@ -208,6 +208,7 @@ struct TestTypeManagementView: View {
     @State private var newTestType = ""
     @State private var showingAddAlert = false
     @State private var showingResetAlert = false
+    @State private var showingLastEnabledAlert = false
     @State private var editMode: EditMode = .inactive
     
     var body: some View {
@@ -220,18 +221,19 @@ struct TestTypeManagementView: View {
                             get: { setting.isEnabled },
                             set: { newValue in
                                 if let index = testTypeSettings.firstIndex(where: { $0.id == setting.id }) {
-                                    testTypeSettings[index].isEnabled = newValue
                                     // 最低1つは有効にする制約
                                     let enabledCount = testTypeSettings.filter { $0.isEnabled }.count
-                                    if enabledCount == 0 && !newValue {
-                                        testTypeSettings[index].isEnabled = true
+                                    if enabledCount == 1 && !newValue && testTypeSettings[index].isEnabled {
+                                        // 最後の有効な検査種類を無効化しようとしている
+                                        showingLastEnabledAlert = true
                                         return
                                     }
+                                    testTypeSettings[index].isEnabled = newValue
                                     saveSettings()
                                 }
                             }
                         ))
-                        
+
                         Image(systemName: "star.fill")
                             .foregroundColor(.orange)
                             .font(.caption)
@@ -245,13 +247,14 @@ struct TestTypeManagementView: View {
                             get: { setting.isEnabled },
                             set: { newValue in
                                 if let index = testTypeSettings.firstIndex(where: { $0.id == setting.id }) {
-                                    testTypeSettings[index].isEnabled = newValue
                                     // 最低1つは有効にする制約
                                     let enabledCount = testTypeSettings.filter { $0.isEnabled }.count
-                                    if enabledCount == 0 && !newValue {
-                                        testTypeSettings[index].isEnabled = true
+                                    if enabledCount == 1 && !newValue && testTypeSettings[index].isEnabled {
+                                        // 最後の有効な検査種類を無効化しようとしている
+                                        showingLastEnabledAlert = true
                                         return
                                     }
+                                    testTypeSettings[index].isEnabled = newValue
                                     saveSettings()
                                 }
                             }
@@ -331,6 +334,11 @@ struct TestTypeManagementView: View {
             Button("キャンセル", role: .cancel) { }
         } message: {
             Text("検査種類リストが初期設定に戻ります。追加した検査種類は削除されます。この操作は取り消せません。")
+        }
+        .alert("無効化できません", isPresented: $showingLastEnabledAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("最低1つの検査種類を有効にしておく必要があります。他の検査種類を有効にしてから無効化してください。")
         }
         .onAppear {
             loadSettings()

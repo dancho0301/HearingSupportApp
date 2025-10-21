@@ -278,21 +278,17 @@ final class AppSettings {
     var testTypeSettings: [TestTypeSetting] {
         get {
             guard let data = testTypeSettingsData else {
-                // データがない場合、現在の検査種類から初期設定を作成
-                let initialSettings = testTypes.map { TestTypeSetting(name: $0, isEnabled: true, isDefault: AppSettings.defaultTestTypes.contains($0)) }
-                testTypeSettingsData = try? JSONEncoder().encode(initialSettings)
-                return initialSettings
+                // データがない場合、現在の検査種類から初期設定を作成（書き込みなし）
+                return testTypes.map { TestTypeSetting(name: $0, isEnabled: true, isDefault: AppSettings.defaultTestTypes.contains($0)) }
             }
-            
+
             let settings = (try? JSONDecoder().decode([TestTypeSetting].self, from: data)) ?? []
-            
-            // 設定が空の場合、現在の検査種類から初期設定を作成
+
+            // 設定が空の場合、現在の検査種類から初期設定を作成（書き込みなし）
             if settings.isEmpty {
-                let initialSettings = testTypes.map { TestTypeSetting(name: $0, isEnabled: true, isDefault: AppSettings.defaultTestTypes.contains($0)) }
-                testTypeSettingsData = try? JSONEncoder().encode(initialSettings)
-                return initialSettings
+                return testTypes.map { TestTypeSetting(name: $0, isEnabled: true, isDefault: AppSettings.defaultTestTypes.contains($0)) }
             }
-            
+
             // マイグレーション: 既存データでisDefaultがない場合はデフォルト検査種類かどうかで設定
             let migratedSettings = settings.map { setting in
                 var newSetting = setting
@@ -302,14 +298,9 @@ final class AppSettings {
                 }
                 return newSetting
             }
-            
-            // マイグレーションした結果を保存
-            if settings != migratedSettings {
-                testTypeSettingsData = try? JSONEncoder().encode(migratedSettings)
-                return migratedSettings
-            }
-            
-            return settings
+
+            // マイグレーションが必要な場合は変換結果を返す（書き込みはsetterで行う）
+            return migratedSettings
         }
         set {
             testTypeSettingsData = try? JSONEncoder().encode(newValue)
@@ -324,21 +315,17 @@ final class AppSettings {
     var hospitalSettings: [HospitalSetting] {
         get {
             guard let data = hospitalSettingsData else {
-                // データがない場合、現在の病院リストから初期設定を作成
-                let initialSettings = hospitalList.map { HospitalSetting(name: $0, isEnabled: true) }
-                hospitalSettingsData = try? JSONEncoder().encode(initialSettings)
-                return initialSettings
+                // データがない場合、現在の病院リストから初期設定を作成（書き込みなし）
+                return hospitalList.map { HospitalSetting(name: $0, isEnabled: true) }
             }
-            
+
             let settings = (try? JSONDecoder().decode([HospitalSetting].self, from: data)) ?? []
-            
-            // 設定が空の場合、現在の病院リストから初期設定を作成
+
+            // 設定が空の場合、現在の病院リストから初期設定を作成（書き込みなし）
             if settings.isEmpty {
-                let initialSettings = hospitalList.map { HospitalSetting(name: $0, isEnabled: true) }
-                hospitalSettingsData = try? JSONEncoder().encode(initialSettings)
-                return initialSettings
+                return hospitalList.map { HospitalSetting(name: $0, isEnabled: true) }
             }
-            
+
             return settings
         }
         set {
