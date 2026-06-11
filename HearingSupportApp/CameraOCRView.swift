@@ -39,9 +39,9 @@ struct CameraOCRView: UIViewControllerRepresentable {
                 parent.isPresented = false
                 return
             }
-            
-            let image = scan.imageOfPage(at: 0)
-            recognizeText(from: image)
+
+            let images = (0..<scan.pageCount).map { scan.imageOfPage(at: $0) }
+            recognizeText(from: images)
         }
         
         func documentCameraViewControllerDidCancel(_ controller: VNDocumentCameraViewController) {
@@ -52,45 +52,38 @@ struct CameraOCRView: UIViewControllerRepresentable {
             parent.isPresented = false
         }
         
-        private func recognizeText(from image: UIImage) {
-            guard let cgImage = image.cgImage else {
-                parent.isPresented = false
-                return
-            }
-            
-            let requestHandler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-            let request = VNRecognizeTextRequest { [weak self] request, error in
-                guard let self = self else { return }
-                
-                DispatchQueue.main.async {
-                    self.parent.isPresented = false
-                    
-                    if let error = error {
-                        print("OCR Error: \(error)")
-                        return
+        private func recognizeText(from images: [UIImage]) {
+            // OCRは時間がかかるためバックグラウンドで実行する
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                var pageTexts: [String] = []
+
+                for image in images {
+                    guard let cgImage = image.cgImage else { continue }
+
+                    let requestHandler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+                    let request = VNRecognizeTextRequest()
+                    request.recognitionLevel = .accurate
+                    request.recognitionLanguages = ["ja", "en"]
+
+                    do {
+                        try requestHandler.perform([request])
+                        if let observations = request.results {
+                            let recognizedStrings = observations.compactMap { observation in
+                                observation.topCandidates(1).first?.string
+                            }
+                            if !recognizedStrings.isEmpty {
+                                pageTexts.append(recognizedStrings.joined(separator: "\n"))
+                            }
+                        }
+                    } catch {
+                        print("OCR Request Error: \(error)")
                     }
-                    
-                    guard let observations = request.results as? [VNRecognizedTextObservation] else {
-                        return
-                    }
-                    
-                    let recognizedStrings = observations.compactMap { observation in
-                        observation.topCandidates(1).first?.string
-                    }
-                    
-                    self.parent.recognizedText = recognizedStrings.joined(separator: "\n")
                 }
-            }
-            
-            request.recognitionLevel = .accurate
-            request.recognitionLanguages = ["ja", "en"]
-            
-            do {
-                try requestHandler.perform([request])
-            } catch {
+
                 DispatchQueue.main.async {
+                    guard let self = self else { return }
                     self.parent.isPresented = false
-                    print("OCR Request Error: \(error)")
+                    self.parent.recognizedText = pageTexts.joined(separator: "\n")
                 }
             }
         }
