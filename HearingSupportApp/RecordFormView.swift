@@ -20,7 +20,7 @@ struct RecordFormView: View {
     @State private var showValidationAlert = false
     @State private var validationMessage = ""
     @State private var showingScanner = false
-    @State private var scannedText = ""
+    @State private var scannedPages: [ScannedPage] = []
     @State private var showScanResultAlert = false
     @State private var scanResultMessage = ""
     
@@ -238,11 +238,11 @@ struct RecordFormView: View {
             Text(validationMessage)
         }
         .sheet(isPresented: $showingScanner) {
-            CameraOCRView(recognizedText: $scannedText, isPresented: $showingScanner)
+            CameraOCRView(scannedPages: $scannedPages, isPresented: $showingScanner)
                 .ignoresSafeArea()
         }
-        .onChange(of: scannedText) { _, newText in
-            applyScanResult(newText)
+        .onChange(of: scannedPages) { _, newPages in
+            applyScanResult(newPages)
         }
         .alert("読み取り結果", isPresented: $showScanResultAlert) {
             Button("OK", role: .cancel) { }
@@ -252,11 +252,11 @@ struct RecordFormView: View {
     }
 
     // カメラ読み取り結果をフォームに反映する
-    private func applyScanResult(_ text: String) {
-        guard !text.isEmpty else { return }
-        defer { scannedText = "" }
+    private func applyScanResult(_ pages: [ScannedPage]) {
+        guard !pages.isEmpty else { return }
+        defer { scannedPages = [] }
 
-        let parsed = RecordSheetParser.parse(text)
+        let parsed = RecordSheetParser.parse(pages: pages)
         var appliedItems: [String] = []
 
         if let scannedDate = parsed.date {
@@ -274,19 +274,25 @@ struct RecordFormView: View {
             appliedItems.append("病院名")
         }
 
-        if let input = parsed.testResult {
-            if results.count == 1 && isEmptyResult(results[0]) {
-                results[0] = input
-            } else if results.count < 6 {
-                results.append(input)
+        if !parsed.testResults.isEmpty {
+            for input in parsed.testResults {
+                if results.count == 1 && isEmptyResult(results[0]) {
+                    results[0] = input
+                } else if results.count < 6 {
+                    results.append(input)
+                }
             }
-            appliedItems.append("聴力レベル")
+            appliedItems.append(parsed.usedGraphRecognition ? "聴力レベル（グラフから推定）" : "聴力レベル")
         }
 
         if appliedItems.isEmpty {
             scanResultMessage = "記録内容を読み取れませんでした。文字がはっきり写るように撮影し直すか、手動で入力してください。"
         } else {
-            scanResultMessage = "次の項目を読み取りました：\(appliedItems.joined(separator: "・"))\n内容を確認し、必要に応じて修正してください。"
+            var message = "次の項目を読み取りました：\(appliedItems.joined(separator: "・"))\n内容を確認し、必要に応じて修正してください。"
+            if parsed.usedGraphRecognition {
+                message += "\n聴力レベルはグラフの記号位置から推定した値です。必ず元の用紙と見比べてください。"
+            }
+            scanResultMessage = message
         }
         // カメラのシートが閉じてからアラートを表示する
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {

@@ -10,10 +10,12 @@ import Foundation
 struct ParsedRecordSheet {
     var date: Date?
     var hospital: String?
-    var testResult: TestResultInput?
+    var testResults: [TestResultInput] = []
+    // 聴力値をテキストではなくグラフの記号位置から推定した場合 true
+    var usedGraphRecognition: Bool = false
 
     var hasAnyData: Bool {
-        date != nil || hospital != nil || testResult != nil
+        date != nil || hospital != nil || !testResults.isEmpty
     }
 }
 
@@ -22,8 +24,67 @@ struct RecordSheetParser {
         ParsedRecordSheet(
             date: parseDate(from: text),
             hospital: parseHospital(from: text),
-            testResult: HearingTestParser.parseOCRText(text)
+            testResults: splitByEar(HearingTestParser.parseOCRText(text))
         )
+    }
+
+    /// ページごとの位置情報付きOCR結果を解析する。
+    /// テキストから聴力値が得られない場合はグラフ（○・×記号の位置）から推定する。
+    static func parse(pages: [ScannedPage]) -> ParsedRecordSheet {
+        let fullText = pages.map(\.text).joined(separator: "\n")
+        var sheet = parse(fullText)
+
+        if sheet.testResults.isEmpty {
+            for page in pages {
+                let graphResults = AudiogramGraphParser.parse(page)
+                if !graphResults.isEmpty {
+                    let condition = detectCondition(in: fullText)
+                    sheet.testResults = graphResults.map { input in
+                        var input = input
+                        input.condition = condition
+                        return input
+                    }
+                    sheet.usedGraphRecognition = true
+                    break
+                }
+            }
+        }
+        return sheet
+    }
+
+    // 「両耳」として解析された結果に右耳・左耳の個別データが含まれる場合、
+    // 保存時に失われないよう耳ごとの結果に分割する
+    // （TestResultInput.toResult() は「両耳」のとき thresholdsBoth しか保存しないため）
+    private static func splitByEar(_ input: TestResultInput?) -> [TestResultInput] {
+        guard let input = input else { return [] }
+        guard input.ear == "両耳" else { return [input] }
+
+        let hasRight = input.thresholdsRight.contains { $0 != nil }
+        let hasLeft = input.thresholdsLeft.contains { $0 != nil }
+        guard hasRight || hasLeft else { return [input] }
+
+        var results: [TestResultInput] = []
+        if hasRight {
+            var right = TestResultInput()
+            right.ear = "右耳のみ"
+            right.condition = input.condition
+            right.thresholdsRight = input.thresholdsRight
+            results.append(right)
+        }
+        if hasLeft {
+            var left = TestResultInput()
+            left.ear = "左耳のみ"
+            left.condition = input.condition
+            left.thresholdsLeft = input.thresholdsLeft
+            results.append(left)
+        }
+        return results
+    }
+
+    private static func detectCondition(in text: String) -> String {
+        if text.contains("補聴器") || text.contains("HA") { return "補聴器" }
+        if text.contains("人工内耳") || text.contains("CI") { return "人工内耳" }
+        return "裸耳"
     }
 
     // MARK: - 検査日の抽出

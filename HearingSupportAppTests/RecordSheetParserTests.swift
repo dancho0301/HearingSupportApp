@@ -118,14 +118,64 @@ final class RecordSheetParserTests: XCTestCase {
         XCTAssertTrue(parsed.hasAnyData)
         assertDate(parsed.date, year: 2025, month: 8, day: 20)
         XCTAssertEqual(parsed.hospital, "さくら総合病院")
-        XCTAssertNotNil(parsed.testResult, "聴力値が解析されるべきです")
-        XCTAssertEqual(parsed.testResult?.ear, "右耳のみ")
-        XCTAssertEqual(parsed.testResult?.thresholdsRight[0], 25)
-        XCTAssertEqual(parsed.testResult?.thresholdsRight[6], 55)
+        XCTAssertEqual(parsed.testResults.count, 1, "聴力値が解析されるべきです")
+        XCTAssertFalse(parsed.usedGraphRecognition, "テキストから読み取れる場合はグラフ推定を使わないべきです")
+        XCTAssertEqual(parsed.testResults.first?.ear, "右耳のみ")
+        XCTAssertEqual(parsed.testResults.first?.thresholdsRight[0], 25)
+        XCTAssertEqual(parsed.testResults.first?.thresholdsRight[6], 55)
+    }
+
+    func testBothEarsTextResultIsSplitPerEar() {
+        // 「両耳」のまま保存すると右耳・左耳の個別データが失われるため、耳ごとに分割される
+        let text = """
+        聴力検査結果
+        気導検査
+        右耳 ○ 25 30 35 40 45 50 55
+        左耳 × 20 25 30 35 40 45 50
+        """
+
+        let parsed = RecordSheetParser.parse(text)
+
+        XCTAssertEqual(parsed.testResults.count, 2, "右耳と左耳に分割されるべきです")
+        let right = parsed.testResults.first { $0.ear == "右耳のみ" }
+        let left = parsed.testResults.first { $0.ear == "左耳のみ" }
+        XCTAssertEqual(right?.thresholdsRight[0], 25)
+        XCTAssertEqual(left?.thresholdsLeft[0], 20)
     }
 
     func testParseEmptyTextHasNoData() {
         let parsed = RecordSheetParser.parse("")
         XCTAssertFalse(parsed.hasAnyData)
+    }
+
+    // MARK: - グラフへのフォールバック
+
+    func testGraphFallbackWhenTextHasNoThresholds() {
+        // テキストに聴力値がなく、グラフの軸ラベルと記号だけがあるページ
+        var tokens: [ScannedToken] = []
+        let freqLabels = ["125", "250", "500", "1000", "2000", "4000", "8000"]
+        for (i, label) in freqLabels.enumerated() {
+            tokens.append(makeToken(label, x: 0.2 + CGFloat(i) * 0.1, y: 0.92))
+        }
+        for db in stride(from: 0, through: 120, by: 10) {
+            tokens.append(makeToken("\(db)", x: 0.08, y: 0.85 - CGFloat(db) / 120 * 0.7))
+        }
+        let values = [25, 30, 35, 40, 45, 50, 55]
+        for (i, value) in values.enumerated() {
+            tokens.append(makeToken("○", x: 0.2 + CGFloat(i) * 0.1, y: 0.85 - CGFloat(value) / 120 * 0.7))
+        }
+
+        let page = ScannedPage(text: "オージオグラム\n検査日 2025年8月20日", tokens: tokens)
+        let parsed = RecordSheetParser.parse(pages: [page])
+
+        XCTAssertTrue(parsed.usedGraphRecognition, "グラフ推定が使われるべきです")
+        XCTAssertEqual(parsed.testResults.count, 1)
+        XCTAssertEqual(parsed.testResults.first?.ear, "右耳のみ")
+        XCTAssertEqual(parsed.testResults.first?.thresholdsRight, values.map { Optional($0) })
+        assertDate(parsed.date, year: 2025, month: 8, day: 20)
+    }
+
+    private func makeToken(_ text: String, x: CGFloat, y: CGFloat) -> ScannedToken {
+        ScannedToken(text: text, boundingBox: CGRect(x: x - 0.015, y: y - 0.01, width: 0.03, height: 0.02))
     }
 }

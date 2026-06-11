@@ -24,6 +24,7 @@ HearingSupportApp is a SwiftUI iOS application designed as a hearing test record
 - **CameraOCRView.swift**: VisionKit-based camera capture and OCR text recognition
 - **HearingTestParser.swift**: OCR text analysis for audiogram data extraction (air conduction only)
 - **RecordSheetParser.swift**: OCR text analysis for whole paper record sheets (test date, hospital name, and hearing thresholds), used by the camera import button in RecordFormView
+- **AudiogramGraphParser.swift**: Reads plotted audiogram symbols (○/×) from graph-only sheets by calibrating axis label positions from OCR bounding boxes; used as a fallback when no threshold values are found as text
 
 ### Data Models
 
