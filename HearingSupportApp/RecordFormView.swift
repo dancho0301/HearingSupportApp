@@ -115,102 +115,18 @@ struct RecordFormView: View {
 
     var body: some View {
         Form {
-            Section {
-                Button(action: {
-                    showingScanner = true
-                }) {
-                    Label("紙の記録用紙をカメラで読み取る", systemImage: "doc.viewfinder")
-                }
-            } footer: {
-                Text("検査日・病院名・聴力レベルを自動で読み取ってフォームに入力します。読み取り後は必ず内容を確認してください。")
-            }
-            Section(header: Text("検査情報")) {
-                DatePicker("検査日", selection: $date, displayedComponents: [.date])
-                    .datePickerStyle(.compact)
-                    .environment(\.locale, Locale(identifier: "ja_JP"))
-                Picker("病院名", selection: $selectedHospitalIndex) {
-                    ForEach(0..<(settings.enabledHospitals.count + 1), id: \.self) { idx in
-                        if idx < settings.enabledHospitals.count {
-                            Text(settings.enabledHospitals[idx])
-                        } else {
-                            Text("新規入力")
-                        }
-                    }
-                }
-                if selectedHospitalIndex == settings.enabledHospitals.count {
-                    TextField("新しい病院名を入力", text: $newHospital)
-                }
-                Picker("検査名", selection: $selectedTestIndex) {
-                    ForEach(0..<settings.enabledTestTypes.count, id: \.self) {
-                        Text(settings.enabledTestTypes[$0])
-                    }
-                }
-            }
-            Section(header: Text("検査結果（最大6通り追加可）")) {
-                ForEach($results) { $result in
-                    TestResultInputView(result: $result)
-                }
-                if results.count < 6 {
-                    Button(action: {
-                        results.append(TestResultInput())
-                    }) {
-                        Label("検査結果を追加", systemImage: "plus.circle")
-                    }
-                }
-            }
-            Section(header: Text("結果・所見")) {
-                TextEditor(text: $detail)
-                    .frame(minHeight: 80)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                    )
-            }
-            
-            Section {
-                if isEditing, let _ = onDelete {
-                    Button("削除", role: .destructive) {
-                        showDeleteAlert = true
-                    }
-                }
-            }
+            scanSection
+            infoSection
+            resultsSection
+            detailSection
+            deleteSection
         }
         .navigationTitle(isEditing ? "記録の編集" : "検査記録を追加")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button("保存") {
-                    let hospitalName: String
-                    if selectedHospitalIndex == settings.enabledHospitals.count {
-                        hospitalName = newHospital
-                    } else {
-                        hospitalName = settings.enabledHospitals[selectedHospitalIndex]
-                    }
-                    
-                    // バリデーション
-                    if hospitalName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        validationMessage = "病院名を入力してください"
-                        showValidationAlert = true
-                        return
-                    }
-                    
-                    if selectedTestIndex >= settings.enabledTestTypes.count {
-                        validationMessage = "検査種類を選択してください"
-                        showValidationAlert = true
-                        return
-                    }
-                    
-                    do {
-                        let testResults = try results.map { input in
-                            try input.toResult()
-                        }
-                        
-                        onSave(hospitalName, settings.enabledTestTypes[selectedTestIndex], date, detail, testResults)
-                        presentationMode.wrappedValue.dismiss()
-                    } catch {
-                        validationMessage = error.localizedDescription
-                        showValidationAlert = true
-                    }
+                    saveRecord()
                 }
                 .foregroundColor(.blue)
             }
@@ -248,6 +164,117 @@ struct RecordFormView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(scanResultMessage)
+        }
+    }
+
+    // MARK: - フォームの各セクション
+
+    private var scanSection: some View {
+        Section {
+            Button(action: {
+                showingScanner = true
+            }) {
+                Label("紙の記録用紙をカメラで読み取る", systemImage: "doc.viewfinder")
+            }
+        } footer: {
+            Text("検査日・病院名・聴力レベルを自動で読み取ってフォームに入力します。読み取り後は必ず内容を確認してください。")
+        }
+    }
+
+    private var infoSection: some View {
+        Section(header: Text("検査情報")) {
+            DatePicker("検査日", selection: $date, displayedComponents: [.date])
+                .datePickerStyle(.compact)
+                .environment(\.locale, Locale(identifier: "ja_JP"))
+            Picker("病院名", selection: $selectedHospitalIndex) {
+                ForEach(0..<(settings.enabledHospitals.count + 1), id: \.self) { idx in
+                    if idx < settings.enabledHospitals.count {
+                        Text(settings.enabledHospitals[idx])
+                    } else {
+                        Text("新規入力")
+                    }
+                }
+            }
+            if selectedHospitalIndex == settings.enabledHospitals.count {
+                TextField("新しい病院名を入力", text: $newHospital)
+            }
+            Picker("検査名", selection: $selectedTestIndex) {
+                ForEach(0..<settings.enabledTestTypes.count, id: \.self) {
+                    Text(settings.enabledTestTypes[$0])
+                }
+            }
+        }
+    }
+
+    private var resultsSection: some View {
+        Section(header: Text("検査結果（最大6通り追加可）")) {
+            ForEach($results) { $result in
+                TestResultInputView(result: $result)
+            }
+            if results.count < 6 {
+                Button(action: {
+                    results.append(TestResultInput())
+                }) {
+                    Label("検査結果を追加", systemImage: "plus.circle")
+                }
+            }
+        }
+    }
+
+    private var detailSection: some View {
+        Section(header: Text("結果・所見")) {
+            TextEditor(text: $detail)
+                .frame(minHeight: 80)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                )
+        }
+    }
+
+    private var deleteSection: some View {
+        Section {
+            if isEditing, onDelete != nil {
+                Button("削除", role: .destructive) {
+                    showDeleteAlert = true
+                }
+            }
+        }
+    }
+
+    // MARK: - 保存
+
+    private func saveRecord() {
+        let hospitalName: String
+        if selectedHospitalIndex == settings.enabledHospitals.count {
+            hospitalName = newHospital
+        } else {
+            hospitalName = settings.enabledHospitals[selectedHospitalIndex]
+        }
+
+        // バリデーション
+        if hospitalName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            validationMessage = "病院名を入力してください"
+            showValidationAlert = true
+            return
+        }
+
+        if selectedTestIndex >= settings.enabledTestTypes.count {
+            validationMessage = "検査種類を選択してください"
+            showValidationAlert = true
+            return
+        }
+
+        do {
+            let testResults = try results.map { input in
+                try input.toResult()
+            }
+
+            onSave(hospitalName, settings.enabledTestTypes[selectedTestIndex], date, detail, testResults)
+            presentationMode.wrappedValue.dismiss()
+        } catch {
+            validationMessage = error.localizedDescription
+            showValidationAlert = true
         }
     }
 
