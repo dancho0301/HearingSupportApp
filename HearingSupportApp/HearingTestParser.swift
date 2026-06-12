@@ -91,19 +91,32 @@ struct HearingTestParser {
         let lines = text.components(separatedBy: .newlines)
         var hasRightData = false
         var hasLeftData = false
-        
+        // 「右耳 ○」のような見出し行の後に周波数行が続くレイアウトに対応するため、
+        // 直近に登場した耳を記憶しておく
+        var currentEar: EarType? = nil
+
         for line in lines {
             let trimmedLine = line.trimmingCharacters(in: .whitespaces)
-            
+
             // 気導検査の記号を探す: ○（右耳）、×（左耳）
-            if trimmedLine.contains("○") || trimmedLine.contains("右") {
+            let mentionsRight = trimmedLine.contains("○") || trimmedLine.contains("右")
+            let mentionsLeft = trimmedLine.contains("×") || trimmedLine.contains("左")
+
+            if mentionsRight {
                 hasRightData = true
+                currentEar = .right
                 parseAudiogramLine(trimmedLine, for: .right, into: &testResult, frequencyMappings: frequencyMappings)
             }
-            
-            if trimmedLine.contains("×") || trimmedLine.contains("左") {
+
+            if mentionsLeft {
                 hasLeftData = true
+                currentEar = .left
                 parseAudiogramLine(trimmedLine, for: .left, into: &testResult, frequencyMappings: frequencyMappings)
+            }
+
+            // 耳の記載がない行は、直近の耳の続きとして解析する
+            if !mentionsRight && !mentionsLeft, let ear = currentEar {
+                parseAudiogramLine(trimmedLine, for: ear, into: &testResult, frequencyMappings: frequencyMappings)
             }
         }
         
@@ -119,22 +132,28 @@ struct HearingTestParser {
     
     private static func parseAudiogramLine(_ line: String, for ear: EarType, into testResult: inout TestResultInput, frequencyMappings: [String: Int]) {
         // 気導聴力の数値を探す（聴力レベルの範囲: -10dB ~ 120dB）
-        let numberPattern = #"(-?\d+)"#
-        let numberRegex = try! NSRegularExpression(pattern: numberPattern, options: [])
-        let numberMatches = numberRegex.matches(in: line, options: [], range: NSRange(location: 0, length: line.count))
-        
+        // スケールアウト記号（↓・NR・スケールアウト）も測定値（120dB）として
+        // 出現順に解析することで、記号混じりの行でも値の位置がずれないようにする
+        let scaleOutTokens = ["↓", "スケールアウト", "NR"]
+        let numberRegex = try! NSRegularExpression(pattern: #"(-?\d+)"#, options: [])
+
         var detectedNumbers: [Int] = []
-        for match in numberMatches {
-            if let range = Range(match.range, in: line) {
-                if let number = Int(String(line[range])), number <= 120 && number >= -10 {
-                    // 周波数の値（125, 250, 500など）は除外
-                    if ![125, 250, 500, 1000, 2000, 4000, 8000].contains(number) {
-                        detectedNumbers.append(number)
-                    }
-                }
+        for token in line.components(separatedBy: .whitespaces) where !token.isEmpty {
+            if scaleOutTokens.contains(where: { token.contains($0) }) {
+                detectedNumbers.append(120)
+                continue
+            }
+            guard let match = numberRegex.firstMatch(in: token, options: [], range: NSRange(location: 0, length: token.utf16.count)),
+                  let range = Range(match.range, in: token),
+                  let number = Int(String(token[range])) else {
+                continue
+            }
+            // 周波数の値（125, 250, 500など）は除外
+            if number <= 120 && number >= -10 && ![125, 250, 500, 1000, 2000, 4000, 8000].contains(number) {
+                detectedNumbers.append(number)
             }
         }
-        
+
         // 7つの周波数に対応する聴力値を設定
         if detectedNumbers.count >= 7 {
             for (index, value) in detectedNumbers.prefix(7).enumerated() {
@@ -149,15 +168,15 @@ struct HearingTestParser {
             }
         }
         
-        // 明示的な周波数とdB値のペアを探す
-        let frequencyPattern = #"(125|250|500|1000|2000|4000|8000)\s*[Hh]?[Zz]?\s*[:\-]?\s*(-?\d+)\s*[dD]?[Bb]?"#
+        // 明示的な周波数とdB値のペアを探す（1k/2k/4k/8k表記にも対応）
+        let frequencyPattern = #"(125|250|500|1000|2000|4000|8000|[1248]\s*[kK])\s*[Hh]?[Zz]?\s*[:\-]?\s*(-?\d+)\s*[dD]?[Bb]?"#
         let regex = try! NSRegularExpression(pattern: frequencyPattern, options: .caseInsensitive)
         let matches = regex.matches(in: line, options: [], range: NSRange(location: 0, length: line.count))
-        
+
         for match in matches {
             if let freqRange = Range(match.range(at: 1), in: line),
                let dbRange = Range(match.range(at: 2), in: line) {
-                let frequency = String(line[freqRange])
+                let frequency = String(line[freqRange]).replacingOccurrences(of: " ", with: "")
                 let dbString = String(line[dbRange])
                 
                 if let freqIndex = frequencyMappings[frequency],

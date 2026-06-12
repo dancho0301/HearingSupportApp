@@ -19,6 +19,10 @@ struct RecordFormView: View {
     @State private var showExitAlert = false
     @State private var showValidationAlert = false
     @State private var validationMessage = ""
+    @State private var showingScanner = false
+    @State private var scannedPages: [ScannedPage] = []
+    @State private var showScanResultAlert = false
+    @State private var scanResultMessage = ""
     
     // 初期値を保持するプロパティ
     private let initialDate: Date
@@ -111,6 +115,15 @@ struct RecordFormView: View {
 
     var body: some View {
         Form {
+            Section {
+                Button(action: {
+                    showingScanner = true
+                }) {
+                    Label("紙の記録用紙をカメラで読み取る", systemImage: "doc.viewfinder")
+                }
+            } footer: {
+                Text("検査日・病院名・聴力レベルを自動で読み取ってフォームに入力します。読み取り後は必ず内容を確認してください。")
+            }
             Section(header: Text("検査情報")) {
                 DatePicker("検査日", selection: $date, displayedComponents: [.date])
                     .datePickerStyle(.compact)
@@ -224,6 +237,73 @@ struct RecordFormView: View {
         } message: {
             Text(validationMessage)
         }
+        .sheet(isPresented: $showingScanner) {
+            CameraOCRView(scannedPages: $scannedPages, isPresented: $showingScanner)
+                .ignoresSafeArea()
+        }
+        .onChange(of: scannedPages) { _, newPages in
+            applyScanResult(newPages)
+        }
+        .alert("読み取り結果", isPresented: $showScanResultAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(scanResultMessage)
+        }
+    }
+
+    // カメラ読み取り結果をフォームに反映する
+    private func applyScanResult(_ pages: [ScannedPage]) {
+        guard !pages.isEmpty else { return }
+        defer { scannedPages = [] }
+
+        let parsed = RecordSheetParser.parse(pages: pages)
+        var appliedItems: [String] = []
+
+        if let scannedDate = parsed.date {
+            date = scannedDate
+            appliedItems.append("検査日")
+        }
+
+        if let hospital = parsed.hospital {
+            if let idx = settings.enabledHospitals.firstIndex(of: hospital) {
+                selectedHospitalIndex = idx
+            } else {
+                selectedHospitalIndex = settings.enabledHospitals.count
+                newHospital = hospital
+            }
+            appliedItems.append("病院名")
+        }
+
+        if !parsed.testResults.isEmpty {
+            for input in parsed.testResults {
+                if results.count == 1 && isEmptyResult(results[0]) {
+                    results[0] = input
+                } else if results.count < 6 {
+                    results.append(input)
+                }
+            }
+            appliedItems.append(parsed.usedGraphRecognition ? "聴力レベル（グラフから推定）" : "聴力レベル")
+        }
+
+        if appliedItems.isEmpty {
+            scanResultMessage = "記録内容を読み取れませんでした。文字がはっきり写るように撮影し直すか、手動で入力してください。"
+        } else {
+            var message = "次の項目を読み取りました：\(appliedItems.joined(separator: "・"))\n内容を確認し、必要に応じて修正してください。"
+            if parsed.usedGraphRecognition {
+                message += "\n聴力レベルはグラフの記号位置から推定した値です。必ず元の用紙と見比べてください。"
+            }
+            scanResultMessage = message
+        }
+        // カメラのシートが閉じてからアラートを表示する
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            showScanResultAlert = true
+        }
+    }
+
+    private func isEmptyResult(_ input: TestResultInput) -> Bool {
+        return input.thresholdsRight.allSatisfy { $0 == nil } &&
+               input.thresholdsLeft.allSatisfy { $0 == nil } &&
+               input.thresholdsBoth.allSatisfy { $0 == nil }
     }
 }
 
