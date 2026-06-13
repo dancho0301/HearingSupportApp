@@ -18,6 +18,9 @@ struct HearingSimulationView: View {
     @State private var hasConfigured = false
 
     private let cream = Color(red: 1.0, green: 0.97, blue: 0.92)
+    // アプリはライトテーマ固定のため、ダークモードでも読めるよう固定のグレーを使う
+    // （.secondary は適応色でダークモード時に白背景へ埋もれてしまう）
+    private let secondaryText = Color(red: 0.42, green: 0.42, blue: 0.42)
 
     /// シミュレーションに使える聴力データの候補（新しい順）
     private var sources: [SimulationSource] {
@@ -99,7 +102,7 @@ struct HearingSimulationView: View {
             }
             Text("普段の話しかけ方で話し声を録音すると、登録された聴力検査の結果をもとに、お子さまにどのように聞こえているかを再現して聞くことができます。")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(secondaryText)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
@@ -117,7 +120,7 @@ struct HearingSimulationView: View {
                 .font(.headline)
             Text("「\(child.name)」さんの聴力検査の記録を登録すると、その結果をもとに聞こえ方を再現できます。")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(secondaryText)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
@@ -149,7 +152,7 @@ struct HearingSimulationView: View {
                         if let subtitle = selectedSource?.subtitle {
                             Text(subtitle)
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(secondaryText)
                         }
                     }
                     Spacer()
@@ -187,7 +190,7 @@ struct HearingSimulationView: View {
             } else if engine.hasRecording {
                 Text("録音時間: \(timeString(engine.recordingDuration))")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(secondaryText)
                 Button {
                     engine.discardRecording()
                 } label: {
@@ -213,7 +216,7 @@ struct HearingSimulationView: View {
                 }
                 Text("マイクに向かって、いつものように話しかけてみてください。")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(secondaryText)
             }
         }
         .padding()
@@ -255,7 +258,7 @@ struct HearingSimulationView: View {
                 } label: {
                     Label("停止", systemImage: "stop.fill")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(secondaryText)
                 }
                 .padding(.top, 4)
             }
@@ -302,7 +305,7 @@ struct HearingSimulationView: View {
             if showManualControls {
                 Text("各周波数の音量のしぼり具合を手動で変えて、聞こえ方を試せます。")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(secondaryText)
 
                 ForEach(engine.bands) { band in
                     VStack(spacing: 2) {
@@ -313,7 +316,7 @@ struct HearingSimulationView: View {
                             Spacer()
                             Text("\(Int(band.gainDB)) dB")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(secondaryText)
                         }
                         Slider(
                             value: Binding(
@@ -350,7 +353,7 @@ struct HearingSimulationView: View {
                 .foregroundColor(.gray)
             Text("この再現はあくまで周波数帯ごとの音量を調整した簡易的なシミュレーションです。実際の聞こえ方は個人差が大きく、医学的な診断・評価の代わりにはなりません。")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(secondaryText)
         }
         .padding()
         .background(Color.gray.opacity(0.08))
