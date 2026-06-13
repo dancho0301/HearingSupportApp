@@ -305,13 +305,17 @@ final class HearingSimulationEngine: ObservableObject {
             let format = audioFile.processingFormat
             engine.connect(player, to: eq, format: format)
             engine.connect(eq, to: engine.mainMixerNode, format: format)
+            engine.mainMixerNode.outputVolume = 1.0
 
+            engine.prepare()
             if !engine.isRunning {
                 try engine.start()
             }
 
             audioFile.framePosition = 0
-            player.scheduleFile(audioFile, at: nil) { [weak self] in
+            // 完了タイプに .dataPlayedBack を指定する。
+            // 指定しないと再生終了前にハンドラが呼ばれ、すぐ stop() してしまい音が出ない。
+            player.scheduleFile(audioFile, at: nil, completionCallbackType: .dataPlayedBack) { [weak self] _ in
                 Task { @MainActor in
                     self?.handlePlaybackFinished()
                 }
