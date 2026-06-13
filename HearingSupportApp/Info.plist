@@ -18,6 +18,10 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>お子さまの聞こえ方をシミュレーションするため、音声の録音と処理にマイクロフォンアクセスが必要です。録音されたデータは外部に送信されません。</string>
+	<key>NSCameraUsageDescription</key>
+	<string>聴力検査結果の紙を撮影して取り込むためにカメラアクセスが必要です。</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>
