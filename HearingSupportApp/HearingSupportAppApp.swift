@@ -39,6 +39,9 @@ struct HearingSupportAppApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                // アプリはクリーム/白の背景に黒文字のライトテーマ前提でデザインされているため、
+                // ダークモードでも文字が読めるよう常にライトテーマで表示する
+                .preferredColorScheme(.light)
         }
         .modelContainer(sharedModelContainer)
     }
