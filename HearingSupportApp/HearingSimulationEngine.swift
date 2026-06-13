@@ -38,7 +38,8 @@ final class HearingSimulationEngine: ObservableObject {
     enum PlaybackMode: Equatable {
         case none
         case original      // 原音
-        case simulated     // 聞こえ方を再現
+        case simulated     // 聞こえ方を再現（実際の音量低下も含む）
+        case balanced      // ゆがみのみ再現（全体音量は保つ）
     }
 
     // MARK: - 公開状態
@@ -153,13 +154,17 @@ final class HearingSimulationEngine: ObservableObject {
     }
 
     /// 現在の bands の内容を EQ ユニットへ反映する
-    private func applyBandsToEQ() {
+    /// - Parameter relative: true の場合、最もよく聞こえる帯域を基準(0dB)に全体を持ち上げ、
+    ///   帯域間の相対差（音色のゆがみ）だけを残す。全体音量は保たれる。
+    private func applyBandsToEQ(relative: Bool = false) {
+        // relative モードでは、最もゲインの大きい（=最も減衰の少ない）帯域を基準にする
+        let offset: Float = relative ? (bands.map { $0.gainDB }.max() ?? 0) : 0
         for (i, band) in bands.enumerated() where i < eq.bands.count {
             let p = eq.bands[i]
             p.filterType = .parametric
             p.frequency = Float(band.frequency)
             p.bandwidth = 1.0 // 約1オクターブ
-            p.gain = band.gainDB
+            p.gain = band.gainDB - offset
             p.bypass = false
         }
         // 使っていないバンドはバイパス
@@ -277,23 +282,31 @@ final class HearingSimulationEngine: ObservableObject {
 
     /// 原音をそのまま再生する
     func playOriginal() {
-        play(applyEQ: false, mode: .original)
+        play(mode: .original)
     }
 
-    /// 聞こえ方（減衰あり）で再生する
+    /// 聞こえ方（実際の音量低下を含む）で再生する
     func playSimulated() {
-        play(applyEQ: true, mode: .simulated)
+        play(mode: .simulated)
     }
 
-    private func play(applyEQ: Bool, mode: PlaybackMode) {
+    /// ゆがみのみ（全体音量は保ったまま周波数バランスの崩れだけ）で再生する
+    func playBalanced() {
+        play(mode: .balanced)
+    }
+
+    private func play(mode: PlaybackMode) {
         guard let audioFile else { return }
         stopPlayback()
 
-        // EQ の有効・無効を切り替える
-        if applyEQ {
-            applyBandsToEQ()
-        } else {
+        // モードに応じて EQ を設定する
+        switch mode {
+        case .original, .none:
             for band in eq.bands { band.bypass = true }
+        case .simulated:
+            applyBandsToEQ(relative: false)
+        case .balanced:
+            applyBandsToEQ(relative: true)
         }
 
         let session = AVAudioSession.sharedInstance()
