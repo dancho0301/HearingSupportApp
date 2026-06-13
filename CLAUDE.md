@@ -25,6 +25,8 @@ HearingSupportApp is a SwiftUI iOS application designed as a hearing test record
 - **HearingTestParser.swift**: OCR text analysis for audiogram data extraction (air conduction only)
 - **RecordSheetParser.swift**: OCR text analysis for whole paper record sheets (test date, hospital name, and hearing thresholds), used by the camera import button in RecordFormView
 - **AudiogramGraphParser.swift**: Reads plotted audiogram symbols (○/×) from graph-only sheets by calibrating axis label positions from OCR bounding boxes; used as a fallback when no threshold values are found as text
+- **HearingSimulationEngine.swift**: Records speech temporarily and plays it back through `AVAudioEngine` + `AVAudioUnitEQ`, attenuating each frequency band based on the child's hearing test thresholds. All processing is on-device; recordings are temporary (not persisted) and never transmitted externally.
+- **HearingSimulationView.swift**: UI for the "聞こえ方シミュレーション" feature — selects a hearing test result, records speech, plays original vs. simulated audio for comparison, and offers per-band manual fine-tuning.
 
 ### Data Models
 
@@ -84,6 +86,7 @@ xcodebuild test -project HearingSupportApp.xcodeproj -scheme HearingSupportApp -
 7. **Settings Management**: Built-in privacy policy and contact information
 8. **Privacy-First Design**: Zero external data transmission, local-only storage
 9. **Camera OCR Integration**: Audiogram photo capture with automatic air conduction hearing test data extraction
+10. **Hearing Loss Simulation**: Record speech and play it back with per-frequency-band attenuation derived from the child's audiogram, so parents can experience how their child may hear (on-device only, recordings not saved)
 
 ## Japanese Localization
 
