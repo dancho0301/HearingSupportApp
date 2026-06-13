@@ -15,6 +15,7 @@ struct ContentView: View {
     @State private var showAppointments = false
     @State private var showChildSelection = false
     @State private var showInitialSetup = false
+    @State private var showSimulation = false
     @State private var selectedChild: Child? = nil
     @State private var settings: AppSettings? = nil
 
@@ -76,8 +77,15 @@ struct ContentView: View {
                                     showAppointments = true
                                 }
                             }
-                            
-                            
+
+                            // 聞こえ方シミュレーションへの導線
+                            if selectedChild != nil {
+                                HearingSimulationEntryCard {
+                                    showSimulation = true
+                                }
+                            }
+
+
                             ForEach(records) { record in
                                 Button(action: {
                                     editingRecord = record
@@ -193,6 +201,11 @@ struct ContentView: View {
             .navigationDestination(isPresented: $showAppointments) {
                 AppointmentListView()
             }
+            .navigationDestination(isPresented: $showSimulation) {
+                if let selectedChild = selectedChild {
+                    HearingSimulationView(child: selectedChild)
+                }
+            }
             .sheet(isPresented: $showChildSelection) {
                 ChildSelectionView(selectedChild: $selectedChild)
             }
@@ -305,6 +318,45 @@ struct ContentView: View {
         return appointments
             .filter { $0.appointmentDate >= today }
             .first
+    }
+}
+
+struct HearingSimulationEntryCard: View {
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                Image(systemName: "ear.badge.waveform")
+                    .font(.system(size: 24))
+                    .foregroundColor(.orange)
+                    .frame(width: 40, height: 40)
+                    .background(Color.orange.opacity(0.12))
+                    .clipShape(Circle())
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("聞こえ方シミュレーション")
+                        .font(.headline)
+                        .foregroundColor(.black)
+                    Text("話し声を録音して聞こえ方を体験")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .foregroundColor(.gray)
+            }
+            .padding()
+            .background(Color.white)
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
