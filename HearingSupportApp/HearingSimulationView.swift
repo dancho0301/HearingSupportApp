@@ -233,7 +233,7 @@ struct HearingSimulationView: View {
                 .font(.subheadline).bold()
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 playbackButton(
                     title: "原音",
                     systemImage: "speaker.wave.2.fill",
@@ -241,6 +241,14 @@ struct HearingSimulationView: View {
                     active: engine.playbackMode == .original
                 ) {
                     engine.playOriginal()
+                }
+                playbackButton(
+                    title: "ゆがみ",
+                    systemImage: "waveform.path",
+                    color: .green,
+                    active: engine.playbackMode == .balanced
+                ) {
+                    engine.playBalanced()
                 }
                 playbackButton(
                     title: "聞こえ方",
@@ -251,6 +259,13 @@ struct HearingSimulationView: View {
                     engine.playSimulated()
                 }
             }
+
+            VStack(alignment: .leading, spacing: 4) {
+                modeLegend(color: .blue, title: "原音", detail: "録音したそのままの音")
+                modeLegend(color: .green, title: "ゆがみ", detail: "全体の音量は保ち、周波数バランスの崩れ（音のゆがみ）だけを再現")
+                modeLegend(color: .orange, title: "聞こえ方", detail: "実際の音量の小ささも含めて再現")
+            }
+            .padding(.top, 4)
 
             if engine.isPlaying {
                 Button {
@@ -269,17 +284,32 @@ struct HearingSimulationView: View {
         .shadow(color: .black.opacity(0.05), radius: 3, y: 2)
     }
 
+    private func modeLegend(color: Color, title: String, detail: String) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            Circle()
+                .fill(color)
+                .frame(width: 7, height: 7)
+                .padding(.top, 4)
+            (Text(title).bold() + Text("：\(detail)"))
+                .font(.caption2)
+                .foregroundColor(secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     private func playbackButton(title: String, systemImage: String, color: Color, active: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 6) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 26))
+                    .font(.system(size: 24))
                 Text(title)
-                    .font(.subheadline).bold()
+                    .font(.footnote).bold()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
             .foregroundColor(active ? .white : color)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
+            .padding(.vertical, 14)
             .background(active ? color : color.opacity(0.12))
             .cornerRadius(12)
         }
