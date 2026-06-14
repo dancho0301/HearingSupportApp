@@ -62,7 +62,9 @@ struct HearingSimulationView: View {
             }
         }
         .onChange(of: selectedSource?.id) { _ in
-            engine.discardRecording()
+            // 聴力データを切り替えても録音は保持する。
+            // 再生中なら一旦止めて、新しいデータでEQを構成し直すだけにする。
+            engine.stopPlayback()
             configureIfNeeded()
         }
         .alert("マイクへのアクセスが必要です",
