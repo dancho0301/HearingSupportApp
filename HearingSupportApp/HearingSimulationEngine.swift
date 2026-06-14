@@ -22,6 +22,8 @@ struct SimulationBand: Identifiable {
     let label: String
     /// 聴力検査の閾値（dB HL）。データがない場合は nil
     let thresholdDB: Int?
+    /// 聴力データから自動算出した減衰量（dB）。「自動に戻す」で復元する基準値
+    let autoGainDB: Float
     /// 実際に適用する減衰量（dB、0以下の負値）
     var gainDB: Float
 }
@@ -66,6 +68,8 @@ final class HearingSimulationEngine: ObservableObject {
     private var audioFile: AVAudioFile?
     private var recordingURL: URL?
     private var durationTimer: Timer?
+    /// 再生ごとに増える世代番号。古い再生の完了通知を無視するために使う
+    private var playGeneration = 0
 
     init() {
         // バンド数はあとで聴力データに合わせて構成するが、最大バンド数で初期化しておく
@@ -94,12 +98,14 @@ final class HearingSimulationEngine: ObservableObject {
         var newBands: [SimulationBand] = []
         for i in 0..<count {
             let freq = Self.frequency(from: freqLabels[i])
+            // 補間後の値で減衰量を算出する（未測定帯域もカーブが自然になる）
             let gain = Self.gain(forThreshold: filled[i])
             newBands.append(
                 SimulationBand(
                     frequency: freq,
                     label: freqLabels[i],
                     thresholdDB: thresholds[i],
+                    autoGainDB: gain,
                     gainDB: gain
                 )
             )
@@ -153,18 +159,24 @@ final class HearingSimulationEngine: ObservableObject {
         return Double(lower) ?? 1000
     }
 
+    /// 各帯域の減衰量を、最もよく聞こえる帯域(=最大ゲイン)を基準(0dB)に揃え直す。
+    /// 帯域間の相対差（音色のゆがみ）は保ったまま、全体音量を持ち上げる。
+    static func relativeGains(_ gains: [Float]) -> [Float] {
+        guard let maxGain = gains.max() else { return gains }
+        return gains.map { $0 - maxGain }
+    }
+
     /// 現在の bands の内容を EQ ユニットへ反映する
     /// - Parameter relative: true の場合、最もよく聞こえる帯域を基準(0dB)に全体を持ち上げ、
     ///   帯域間の相対差（音色のゆがみ）だけを残す。全体音量は保たれる。
     private func applyBandsToEQ(relative: Bool = false) {
-        // relative モードでは、最もゲインの大きい（=最も減衰の少ない）帯域を基準にする
-        let offset: Float = relative ? (bands.map { $0.gainDB }.max() ?? 0) : 0
+        let gains = relative ? Self.relativeGains(bands.map { $0.gainDB }) : bands.map { $0.gainDB }
         for (i, band) in bands.enumerated() where i < eq.bands.count {
             let p = eq.bands[i]
             p.filterType = .parametric
             p.frequency = Float(band.frequency)
             p.bandwidth = 1.0 // 約1オクターブ
-            p.gain = band.gainDB - offset
+            p.gain = gains[i]
             p.bypass = false
         }
         // 使っていないバンドはバイパス
@@ -187,7 +199,7 @@ final class HearingSimulationEngine: ObservableObject {
     /// 自動算出した減衰量へ戻す
     func resetToAuto() {
         for i in bands.indices {
-            bands[i].gainDB = Self.gain(forThreshold: bands[i].thresholdDB)
+            bands[i].gainDB = bands[i].autoGainDB
         }
         applyBandsToEQ()
     }
@@ -347,24 +359,28 @@ final class HearingSimulationEngine: ObservableObject {
         }
         guard engine.isRunning else { return }
 
+        // この再生の世代番号を確定する。
+        // モード切替などで前の再生を stop した際に遅れて届く完了通知が、
+        // 新しい再生を誤って止めないよう、世代番号で識別する。
+        playGeneration &+= 1
+        let generation = playGeneration
+
         audioFile.framePosition = 0
         // 完了タイプに .dataPlayedBack を指定する。
         // 指定しないと再生終了前にハンドラが呼ばれ、すぐ stop() してしまい音が出ない。
         player.scheduleFile(audioFile, at: nil, completionCallbackType: .dataPlayedBack) { [weak self] _ in
             Task { @MainActor in
-                self?.handlePlaybackFinished()
+                self?.handlePlaybackFinished(generation: generation)
             }
         }
         player.play()
         playbackMode = mode
     }
 
-    private func handlePlaybackFinished() {
-        // 自然に再生が終わった場合
-        if playbackMode != .none {
-            playbackMode = .none
-            player.stop()
-        }
+    private func handlePlaybackFinished(generation: Int) {
+        // 古い再生（すでに別の再生に切り替わっている）の完了通知は無視する
+        guard generation == playGeneration else { return }
+        playbackMode = .none
     }
 
     func stopPlayback() {
