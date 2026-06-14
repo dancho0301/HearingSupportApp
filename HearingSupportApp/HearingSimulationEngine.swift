@@ -82,6 +82,10 @@ final class HearingSimulationEngine: ObservableObject {
 
     deinit {
         durationTimer?.invalidate()
+        // 一時録音ファイルが残らないように削除する
+        if let url = recordingURL {
+            try? FileManager.default.removeItem(at: url)
+        }
     }
 
     // MARK: - バンド構成
@@ -400,5 +404,21 @@ final class HearingSimulationEngine: ObservableObject {
         audioFile = nil
         recordingDuration = 0
         phase = .idle
+    }
+
+    /// 画面を離れるときなどに、録音・再生を止めてオーディオセッションを解放する。
+    /// 解放しないと録音中はマイクが掴まれたままになり、再生セッションも有効なまま
+    /// 他アプリの音声に影響を与え続けてしまう。
+    func deactivate() {
+        if phase == .recording {
+            recorder?.stop()
+            recorder = nil
+            stopDurationTimer()
+        }
+        stopPlayback()
+        if engine.isRunning {
+            engine.stop()
+        }
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 }

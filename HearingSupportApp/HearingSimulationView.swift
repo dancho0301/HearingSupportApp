@@ -67,6 +67,10 @@ struct HearingSimulationView: View {
             engine.stopPlayback()
             configureIfNeeded()
         }
+        .onDisappear {
+            // 画面を離れたら録音・再生を止め、オーディオセッションを解放する
+            engine.deactivate()
+        }
         .alert("マイクへのアクセスが必要です",
                isPresented: Binding(get: { engine.permissionDenied }, set: { _ in })) {
             Button("設定を開く") {
@@ -400,7 +404,10 @@ struct HearingSimulationView: View {
 
 /// シミュレーションに使う聴力データ1件分
 struct SimulationSource: Identifiable {
-    let id = UUID()
+    /// 元の検査結果(TestResult)の安定したID。
+    /// 計算プロパティで都度生成しても同じ検査結果なら同じIDになり、
+    /// メニューの選択状態（チェックマーク）が正しく一致する。
+    let id: UUID
     let date: Date
     let hospital: String
     let earCondition: String   // 例: "両耳・裸耳"
@@ -430,6 +437,7 @@ struct SimulationSource: Identifiable {
                       data.contains(where: { $0 != nil }) else { continue }
                 result.append(
                     SimulationSource(
+                        id: testResult.id,
                         date: record.date,
                         hospital: record.hospital,
                         earCondition: testResult.displayLabel,
