@@ -221,6 +221,10 @@ final class HearingSimulationEngine: ObservableObject {
 
     private func startRecording() {
         stopPlayback()
+        // 録音中は再生エンジンを止めておく（セッションのカテゴリ衝突を避ける）
+        if engine.isRunning {
+            engine.stop()
+        }
         let session = AVAudioSession.sharedInstance()
         do {
             try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
@@ -257,9 +261,36 @@ final class HearingSimulationEngine: ObservableObject {
            let file = try? AVAudioFile(forReading: url) {
             audioFile = file
             phase = .recorded
+            // 再生エンジンを先に起動（ウォームアップ）しておく。
+            // 再生ボタンを押した瞬間に起動すると初回の音が取りこぼされるため、
+            // 録音終了の時点で起動しておくことで1回目から確実に鳴るようにする。
+            prepareEngineForPlayback()
         } else {
             errorMessage = "録音の保存に失敗しました"
             phase = .idle
+        }
+    }
+
+    /// 再生用にオーディオセッションとエンジンを準備し、起動しておく
+    private func prepareEngineForPlayback() {
+        guard let audioFile else { return }
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(.playback, mode: .default, options: [])
+            try session.setActive(true)
+
+            // 録音ファイルのフォーマットに合わせて接続する
+            let format = audioFile.processingFormat
+            engine.connect(player, to: eq, format: format)
+            engine.connect(eq, to: engine.mainMixerNode, format: format)
+            engine.mainMixerNode.outputVolume = 1.0
+
+            engine.prepare()
+            if !engine.isRunning {
+                try engine.start()
+            }
+        } catch {
+            errorMessage = "再生の準備に失敗しました: \(error.localizedDescription)"
         }
     }
 
@@ -309,35 +340,23 @@ final class HearingSimulationEngine: ObservableObject {
             applyBandsToEQ(relative: true)
         }
 
-        let session = AVAudioSession.sharedInstance()
-        do {
-            try session.setCategory(.playback, mode: .default, options: [])
-            try session.setActive(true)
-
-            // 録音ファイルのフォーマットに合わせて接続し直す
-            let format = audioFile.processingFormat
-            engine.connect(player, to: eq, format: format)
-            engine.connect(eq, to: engine.mainMixerNode, format: format)
-            engine.mainMixerNode.outputVolume = 1.0
-
-            engine.prepare()
-            if !engine.isRunning {
-                try engine.start()
-            }
-
-            audioFile.framePosition = 0
-            // 完了タイプに .dataPlayedBack を指定する。
-            // 指定しないと再生終了前にハンドラが呼ばれ、すぐ stop() してしまい音が出ない。
-            player.scheduleFile(audioFile, at: nil, completionCallbackType: .dataPlayedBack) { [weak self] _ in
-                Task { @MainActor in
-                    self?.handlePlaybackFinished()
-                }
-            }
-            player.play()
-            playbackMode = mode
-        } catch {
-            errorMessage = "再生できませんでした: \(error.localizedDescription)"
+        // 通常はエンジンは録音終了時にウォームアップ済み。
+        // 何らかの理由で停止していた場合はここで起動し直す。
+        if !engine.isRunning {
+            prepareEngineForPlayback()
         }
+        guard engine.isRunning else { return }
+
+        audioFile.framePosition = 0
+        // 完了タイプに .dataPlayedBack を指定する。
+        // 指定しないと再生終了前にハンドラが呼ばれ、すぐ stop() してしまい音が出ない。
+        player.scheduleFile(audioFile, at: nil, completionCallbackType: .dataPlayedBack) { [weak self] _ in
+            Task { @MainActor in
+                self?.handlePlaybackFinished()
+            }
+        }
+        player.play()
+        playbackMode = mode
     }
 
     private func handlePlaybackFinished() {
