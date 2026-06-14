@@ -43,9 +43,10 @@ final class TestResultInputTests: XCTestCase {
         XCTAssertTrue(testInput.earOptions.contains("左耳のみ"), "左耳のみオプションが含まれるべきです")
         XCTAssertTrue(testInput.earOptions.contains("両耳"), "両耳オプションが含まれるべきです")
         
-        XCTAssertEqual(testInput.conditionOptions.count, 2, "条件のオプションは2つであるべきです")
+        XCTAssertEqual(testInput.conditionOptions.count, 3, "条件のオプションは3つであるべきです")
         XCTAssertTrue(testInput.conditionOptions.contains("裸耳"), "裸耳オプションが含まれるべきです")
         XCTAssertTrue(testInput.conditionOptions.contains("補聴器"), "補聴器オプションが含まれるべきです")
+        XCTAssertTrue(testInput.conditionOptions.contains("人工内耳"), "人工内耳オプションが含まれるべきです")
         
         // 周波数配列の確認
         XCTAssertEqual(testInput.freqs.count, 7, "周波数配列は7要素であるべきです")

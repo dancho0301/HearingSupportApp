@@ -72,13 +72,15 @@ struct HearingSimulationView: View {
             engine.deactivate()
         }
         .alert("マイクへのアクセスが必要です",
-               isPresented: Binding(get: { engine.permissionDenied }, set: { _ in })) {
+               isPresented: Binding(get: { engine.permissionDenied },
+                                    set: { if !$0 { engine.acknowledgePermissionDenied() } })) {
             Button("設定を開く") {
                 if let url = URL(string: UIApplication.openSettingsURLString) {
                     UIApplication.shared.open(url)
                 }
+                engine.acknowledgePermissionDenied()
             }
-            Button("閉じる", role: .cancel) {}
+            Button("閉じる", role: .cancel) { engine.acknowledgePermissionDenied() }
         } message: {
             Text("録音するには「設定」アプリでマイクの使用を許可してください。録音した音声は端末内のみで処理され、外部に送信されることはありません。")
         }

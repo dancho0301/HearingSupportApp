@@ -70,6 +70,8 @@ final class HearingSimulationEngine: ObservableObject {
     private var durationTimer: Timer?
     /// 再生ごとに増える世代番号。古い再生の完了通知を無視するために使う
     private var playGeneration = 0
+    /// オーディオ割り込み（電話着信など）の通知監視トークン
+    private var interruptionObserver: NSObjectProtocol?
 
     init() {
         // バンド数はあとで聴力データに合わせて構成するが、最大バンド数で初期化しておく
@@ -78,14 +80,72 @@ final class HearingSimulationEngine: ObservableObject {
         engine.attach(eq)
         engine.connect(player, to: eq, format: nil)
         engine.connect(eq, to: engine.mainMixerNode, format: nil)
+        registerInterruptionObserver()
     }
 
     deinit {
         durationTimer?.invalidate()
+        if let observer = interruptionObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
         // 一時録音ファイルが残らないように削除する
         if let url = recordingURL {
             try? FileManager.default.removeItem(at: url)
         }
+    }
+
+    // MARK: - 割り込み処理
+
+    /// 電話着信・他アプリの再生・オーディオルート切断などの割り込みを監視する。
+    /// 割り込み中はエンジンが中断されるため、UI状態（録音/再生）と実状態の乖離を防ぐ。
+    private func registerInterruptionObserver() {
+        interruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: nil
+        ) { [weak self] notification in
+            guard let info = notification.userInfo,
+                  let rawType = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  let type = AVAudioSession.InterruptionType(rawValue: rawType) else { return }
+            Task { @MainActor in
+                self?.handleInterruption(type: type)
+            }
+        }
+    }
+
+    private func handleInterruption(type: AVAudioSession.InterruptionType) {
+        switch type {
+        case .began:
+            // 割り込み開始: 再生は止め、録音中なら現時点までを保存して録音済みに遷移する
+            stopPlayback()
+            if phase == .recording {
+                finishRecordingDueToInterruption()
+            }
+        case .ended:
+            // 割り込み終了後はユーザー操作で再開してもらう（自動再開はしない）
+            break
+        @unknown default:
+            break
+        }
+    }
+
+    /// 割り込みで録音が中断されたときに、それまでの録音を確定させる
+    private func finishRecordingDueToInterruption() {
+        recorder?.stop()
+        recorder = nil
+        stopDurationTimer()
+        if let url = recordingURL, let file = try? AVAudioFile(forReading: url) {
+            audioFile = file
+            phase = .recorded
+        } else {
+            errorMessage = "録音が中断されました"
+            phase = .idle
+        }
+    }
+
+    /// マイク権限拒否の表示状態をリセットする（アラートを閉じたときに呼ぶ）
+    func acknowledgePermissionDenied() {
+        permissionDenied = false
     }
 
     // MARK: - バンド構成
@@ -240,6 +300,11 @@ final class HearingSimulationEngine: ObservableObject {
         // 録音中は再生エンジンを止めておく（セッションのカテゴリ衝突を避ける）
         if engine.isRunning {
             engine.stop()
+        }
+        // 以前の一時録音ファイルが残っていれば削除しておく（ファイルリーク防止）
+        if let existing = recordingURL {
+            try? FileManager.default.removeItem(at: existing)
+            recordingURL = nil
         }
         let session = AVAudioSession.sharedInstance()
         do {

@@ -113,7 +113,9 @@ struct SingleLineGraph: View {
         let points = values.enumerated()
             .compactMap { (i, v) -> CGPoint? in
                 guard let v = v else { return nil }
-                let x = geometrySize.width * CGFloat(i) / CGFloat(freqs.count - 1)
+                // freqs.count == 1 のときのゼロ除算（NaN座標）を防ぐ
+                let divisor = max(freqs.count - 1, 1)
+                let x = geometrySize.width * CGFloat(i) / CGFloat(divisor)
                 let y = geometrySize.height * (CGFloat(v) + 10.0) / 120.0
                 return CGPoint(x: x, y: y)
             }

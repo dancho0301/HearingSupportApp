@@ -187,17 +187,19 @@ final class TestResult {
 }
 
 struct TestTypeSetting: Codable, Identifiable, Hashable {
-    let id = UUID()
+    // 名前を同一性の基準にする。UUIDを使うとデコードのたびに別IDが生成され、
+    // ForEach/選択状態/Hashable が保存→再読込で壊れるため name を id とする。
+    var id: String { name }
     var name: String
     var isEnabled: Bool
     var isDefault: Bool
-    
+
     init(name: String, isEnabled: Bool = true, isDefault: Bool = false) {
         self.name = name
         self.isEnabled = isEnabled
         self.isDefault = isDefault
     }
-    
+
     enum CodingKeys: String, CodingKey {
         case name
         case isEnabled
@@ -206,15 +208,16 @@ struct TestTypeSetting: Codable, Identifiable, Hashable {
 }
 
 struct HospitalSetting: Codable, Identifiable, Hashable {
-    let id = UUID()
+    // TestTypeSetting と同様、name を同一性の基準にする。
+    var id: String { name }
     var name: String
     var isEnabled: Bool
-    
+
     init(name: String, isEnabled: Bool = true) {
         self.name = name
         self.isEnabled = isEnabled
     }
-    
+
     enum CodingKeys: String, CodingKey {
         case name
         case isEnabled
@@ -365,7 +368,7 @@ struct TestResultInput: Identifiable, Hashable {
     var thresholdsLeft: [Int?] = Array(repeating: nil, count: 7)
     var thresholdsBoth: [Int?] = Array(repeating: nil, count: 7)
     let earOptions = ["右耳のみ", "左耳のみ", "両耳"]
-    let conditionOptions = ["裸耳", "補聴器"]
+    let conditionOptions = ["裸耳", "補聴器", "人工内耳"]
     let freqs = ["125Hz", "250Hz", "500Hz", "1kHz", "2kHz", "4kHz", "8kHz"]
 
     func toResult() throws -> TestResult {
@@ -397,6 +400,12 @@ extension TestResult {
             return .green
         case ("両耳", "補聴器"):
             return Color(red: 0.2, green: 0.6, blue: 0.2) // 少し暗い緑
+        case ("右耳のみ", "人工内耳"):
+            return Color(red: 0.6, green: 0.2, blue: 0.6) // 紫（右）
+        case ("左耳のみ", "人工内耳"):
+            return Color(red: 0.4, green: 0.2, blue: 0.7) // 青紫（左）
+        case ("両耳", "人工内耳"):
+            return Color(red: 0.5, green: 0.2, blue: 0.6) // 紫（両耳）
         default:
             return .gray
         }

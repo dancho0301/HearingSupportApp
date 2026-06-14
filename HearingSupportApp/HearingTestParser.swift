@@ -194,27 +194,10 @@ struct HearingTestParser {
             }
         }
         
-        // スケールアウト（測定不能）の処理
-        if line.contains("↓") || line.contains("矢印") || line.contains("スケールアウト") || line.contains("NR") {
-            // スケールアウトの場合は120dBに設定
-            let scaleOutValue = 120
-            for i in 0..<7 {
-                switch ear {
-                case .right:
-                    if testResult.thresholdsRight[i] == nil {
-                        testResult.thresholdsRight[i] = scaleOutValue
-                    }
-                case .left:
-                    if testResult.thresholdsLeft[i] == nil {
-                        testResult.thresholdsLeft[i] = scaleOutValue
-                    }
-                case .both:
-                    if testResult.thresholdsBoth[i] == nil {
-                        testResult.thresholdsBoth[i] = scaleOutValue
-                    }
-                }
-            }
-        }
+        // 注意: 以前はスケールアウト語を含む行で「nilの全周波数を一律120dBで埋める」処理を
+        // 行っていたが、一部周波数だけスケールアウトの記録でも測定していない帯域まで
+        // 最重度（120dB）として誤登録してしまうため廃止した。
+        // スケールアウトは detectedNumbers への 120 追加（出現順）でのみ反映する。
     }
     
     private enum EarType {

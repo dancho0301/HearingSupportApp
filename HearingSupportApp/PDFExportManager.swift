@@ -9,60 +9,71 @@ class PDFExportManager: NSObject {
         super.init()
     }
     
+    @MainActor
     func exportRecordAsPDF(_ record: Record) {
-        // PDF用のビューを生成
-        let pdfView = PrintableRecordView(record: record)
-        let hostingController = UIHostingController(rootView: pdfView)
-        
-        // ビューのサイズを設定（A4サイズ）
+        // A4サイズ
         let pageSize = CGSize(width: 595, height: 842)
-        hostingController.view.frame = CGRect(origin: .zero, size: pageSize)
-        
-        // ビューを強制的にレイアウト
-        hostingController.view.setNeedsLayout()
-        hostingController.view.layoutIfNeeded()
-        
-        // 背景色を白に設定
-        hostingController.view.backgroundColor = UIColor.white
-        
+
         // PDFデータを生成
-        guard let pdfData = generatePDFData(from: hostingController.view, size: pageSize) else {
+        guard let pdfData = generatePDFData(for: record, size: pageSize) else {
             print("PDF生成に失敗しました")
             return
         }
-        
-        // ファイル名を生成
+
+        // ファイル名を生成（パス区切り等の不正文字を除去）
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
         let dateString = dateFormatter.string(from: record.date)
-        let fileName = "聴力検査記録_\(record.title)_\(dateString).pdf"
-        
+        let safeTitle = Self.sanitizeFileName(record.title)
+        let fileName = "聴力検査記録_\(safeTitle)_\(dateString).pdf"
+
         // PDFを共有
         sharePDF(data: pdfData, fileName: fileName)
     }
-    
-    private func generatePDFData(from view: UIView, size: CGSize) -> Data? {
+
+    /// ファイル名に使えない文字（/ : など）を除去・置換する
+    private static func sanitizeFileName(_ name: String) -> String {
+        let invalid = CharacterSet(charactersIn: "/\\:*?\"<>|\n\r\t")
+        let cleaned = name.components(separatedBy: invalid).joined(separator: "_")
+        let trimmed = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "記録" : trimmed
+    }
+
+    @MainActor
+    private func generatePDFData(for record: Record, size: CGSize) -> Data? {
+        // SwiftUI ビューはウィンドウに未アタッチだと drawHierarchy(afterScreenUpdates:)
+        // で白紙になることがあるため、ImageRenderer（iOS16+）でレンダリングする。
+        let pdfView = PrintableRecordView(record: record)
+            .frame(width: size.width, height: size.height)
+            .background(Color.white)
+
+        let renderer = ImageRenderer(content: pdfView)
+        renderer.proposedSize = ProposedViewSize(width: size.width, height: size.height)
+        // PDFは論理ポイント基準で出力する
+        renderer.scale = 1.0
+
         let pdfMetaData = [
             kCGPDFContextCreator: "おみみ手帳",
             kCGPDFContextTitle: "聴力検査記録"
         ]
         let format = UIGraphicsPDFRendererFormat()
         format.documentInfo = pdfMetaData as [String: Any]
-        
-        // A4サイズのPDFレンダラーを作成
+
         let pageRect = CGRect(origin: .zero, size: size)
-        let renderer = UIGraphicsPDFRenderer(bounds: pageRect, format: format)
-        
-        return renderer.pdfData { context in
+        let pdfRenderer = UIGraphicsPDFRenderer(bounds: pageRect, format: format)
+
+        var rendered = false
+        let data = pdfRenderer.pdfData { context in
             context.beginPage()
-            
-            // 背景を白で塗りつぶし
             context.cgContext.setFillColor(UIColor.white.cgColor)
             context.cgContext.fill(pageRect)
-            
-            // ビューを描画前に再度レンダリング
-            view.drawHierarchy(in: pageRect, afterScreenUpdates: true)
+
+            renderer.render { _, render in
+                rendered = true
+                render(context.cgContext)
+            }
         }
+        return rendered ? data : nil
     }
     
     private func sharePDF(data: Data, fileName: String) {

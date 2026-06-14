@@ -123,7 +123,23 @@ struct RecordFormView: View {
         }
         .navigationTitle(isEditing ? "記録の編集" : "検査記録を追加")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button {
+                    // 未保存の変更がある場合は破棄確認を出す
+                    if hasChanges {
+                        showExitAlert = true
+                    } else {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                        Text("戻る")
+                    }
+                }
+            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button("保存") {
                     saveRecord()
@@ -245,11 +261,13 @@ struct RecordFormView: View {
     // MARK: - 保存
 
     private func saveRecord() {
+        // enabledHospitals は計算プロパティで、表示後に設定変更で件数が変わり得るため
+        // インデックスの範囲を必ず確認してから参照する（範囲外アクセスでのクラッシュを防ぐ）。
         let hospitalName: String
-        if selectedHospitalIndex == settings.enabledHospitals.count {
-            hospitalName = newHospital
-        } else {
+        if settings.enabledHospitals.indices.contains(selectedHospitalIndex) {
             hospitalName = settings.enabledHospitals[selectedHospitalIndex]
+        } else {
+            hospitalName = newHospital
         }
 
         // バリデーション

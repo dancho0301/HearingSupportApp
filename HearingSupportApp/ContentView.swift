@@ -155,9 +155,10 @@ struct ContentView: View {
             .navigationBarHidden(true)
             // iOS16+推奨の画面遷移
             .navigationDestination(isPresented: $showForm) {
+                if let settings = settings {
                 RecordFormView(
                     record: editingRecord,
-                    settings: settings ?? AppSettings(),
+                    settings: settings,
                     isEditing: isEditing,
                     onSave: { hospital, title, date, detail, results in
                         if isEditing, let editingRecord = editingRecord {
@@ -179,7 +180,7 @@ struct ContentView: View {
                         }
                         
                         // 新しい病院が追加された場合はリストにも反映
-                        if let settings = settings, !settings.hospitalList.contains(hospital) {
+                        if !settings.hospitalList.contains(hospital) {
                             settings.hospitalList.append(hospital)
                         }
                         
@@ -194,9 +195,12 @@ struct ContentView: View {
                         showForm = false
                     }
                 )
+                }
             }
             .navigationDestination(isPresented: $showSettings) {
-                SettingsView(settings: settings ?? AppSettings())
+                if let settings = settings {
+                    SettingsView(settings: settings)
+                }
             }
             .navigationDestination(isPresented: $showAppointments) {
                 AppointmentListView()

@@ -27,9 +27,11 @@ struct AppointmentFormView: View {
     @State private var showValidationAlert = false
     @State private var validationMessage = ""
     
-    // 初期値を保持するプロパティ
-    private let initialHospitalIndex: Int
-    private let initialNewHospital: String
+    // 初期値を保持するプロパティ。
+    // 病院インデックスは settings(@Query) が init では参照できないため onAppear で確定する。
+    @State private var initialHospitalIndex: Int = 0
+    @State private var initialNewHospital: String = ""
+    @State private var didCaptureBaseline = false
     private let initialAppointmentDate: Date
     private let initialAppointmentTime: Date
     private let initialPurpose: String
@@ -69,8 +71,6 @@ struct AppointmentFormView: View {
             self.initialAppointmentTime = timeValue
             self.initialPurpose = purposeValue
             self.initialNotes = notesValue
-            self.initialHospitalIndex = 0
-            self.initialNewHospital = ""
         } else {
             let dateValue = Date()
             let timeValue = Date()
@@ -86,8 +86,6 @@ struct AppointmentFormView: View {
             self.initialAppointmentTime = timeValue
             self.initialPurpose = purposeValue
             self.initialNotes = notesValue
-            self.initialHospitalIndex = 0
-            self.initialNewHospital = ""
         }
     }
     
@@ -187,6 +185,17 @@ struct AppointmentFormView: View {
             }
             .navigationTitle(appointment == nil ? "予定の追加" : "予定の編集")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("キャンセル") {
+                        if hasChanges {
+                            showExitAlert = true
+                        } else {
+                            onCancel()
+                        }
+                    }
+                }
+            }
             .alert("変更を破棄", isPresented: $showExitAlert) {
                 Button("キャンセル", role: .cancel) { }
                 Button("破棄", role: .destructive) {
@@ -201,6 +210,7 @@ struct AppointmentFormView: View {
                 Text(validationMessage)
             }
         }
+        .interactiveDismissDisabled(hasChanges)
         .onAppear {
             if let appointment = appointment, let settings = settings {
                 if let hospitalIndex = settings.hospitalList.firstIndex(of: appointment.hospital) {
@@ -212,6 +222,12 @@ struct AppointmentFormView: View {
             } else if let settings = settings {
                 // 新規作成時に確実に有効なインデックスを設定
                 selectedHospitalIndex = min(selectedHospitalIndex, settings.hospitalList.count)
+            }
+            // 病院選択を確定したあとに、変更検知の基準値を一度だけ記録する
+            if !didCaptureBaseline {
+                initialHospitalIndex = selectedHospitalIndex
+                initialNewHospital = newHospital
+                didCaptureBaseline = true
             }
         }
     }

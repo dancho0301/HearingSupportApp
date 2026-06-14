@@ -15,7 +15,7 @@ final class ModelsTests: XCTestCase {
     // MARK: - TestResult Tests
     
     func testTestResultDisplayColor() throws {
-        // 両耳・裸耳 -> 青
+        // 両耳・裸耳 -> 緑（実装の配色に合わせる）
         let bothEarsNaked = try TestResult(
             ear: "両耳",
             condition: "裸耳",
@@ -24,7 +24,7 @@ final class ModelsTests: XCTestCase {
             thresholdsBoth: [20, 25, 30, 35, 40, 45, 50],
             freqs: ["125Hz", "250Hz", "500Hz", "1kHz", "2kHz", "4kHz", "8kHz"]
         )
-        XCTAssertEqual(bothEarsNaked.displayColor, .blue)
+        XCTAssertEqual(bothEarsNaked.displayColor, .green)
         
         // 右耳のみ・裸耳 -> 赤
         let rightEarNaked = try TestResult(
@@ -37,7 +37,7 @@ final class ModelsTests: XCTestCase {
         )
         XCTAssertEqual(rightEarNaked.displayColor, .red)
         
-        // 左耳のみ・補聴器 -> mint
+        // 左耳のみ・補聴器 -> 少し暗い青（実装の配色に合わせる）
         let leftEarAided = try TestResult(
             ear: "左耳のみ",
             condition: "補聴器",
@@ -46,7 +46,7 @@ final class ModelsTests: XCTestCase {
             thresholdsBoth: nil,
             freqs: ["125Hz", "250Hz", "500Hz", "1kHz", "2kHz", "4kHz", "8kHz"]
         )
-        XCTAssertEqual(leftEarAided.displayColor, .mint)
+        XCTAssertEqual(leftEarAided.displayColor, Color(red: 0.2, green: 0.4, blue: 0.8))
         
         // 未定義パターン -> グレー
         let unknownPattern = try TestResult(

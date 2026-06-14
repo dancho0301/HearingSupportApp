@@ -12,7 +12,9 @@ import CoreGraphics
 
 struct AudiogramGraphParser {
 
-    // OCRが気導記号として認識しうる文字（○は O・0 などに誤認されやすい）
+    // OCRが気導記号として認識しうる文字（○は O・0 などに誤認されやすい）。
+    // 数字の "0" は dB軸ラベル等で出現しうるが、軸ラベルはプロット領域外にあり
+    // plotXRange / plotYRange の位置フィルタ（parse 内）で除外されるため記号集合に含める。
     private static let rightEarSymbols: Set<Character> = ["○", "〇", "◯", "O", "o", "0"]
     private static let leftEarSymbols: Set<Character> = ["×", "✕", "✗", "X", "x"]
 
